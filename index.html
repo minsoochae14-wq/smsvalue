@@ -345,7 +345,7 @@ function onInput() {
 }
 
 // ── Gemini API 키 설정 ──
-var GEMINI_KEY = 'AIzaSyAsltXrT6cWsku4AJl7ocVfMCc4ASHm_HI';
+var GEMINI_KEY = 'YOUR_GEMINI_KEY';
 
 function showAI() {
   var smsText = document.getElementById('smsTA').value.trim();
@@ -366,7 +366,7 @@ async function analyzeSMS(smsText) {
 }
 
 async function callGeminiAPI(smsText) {
-  var prompt = '다음 한국 광고 문자(SMS)를 분석해서 JSON으로만 응답해. JSON 외 다른 텍스트나 마크다운 코드블록 절대 쓰지 마.\n\nSMS 원문:\n' + smsText + '\n\n분석 규칙:\n- brand: 발신자명 또는 문자 내용에서 브랜드/업체명 추출. "안녕하세요 OO입니다"에서 OO가 브랜드. [Web발신](광고)전화번호는 브랜드 아님. 모르면 알수없음\n- category: 음료/카페, 편의점, 배달앱, 패션/의류, 뷰티/헬스, 마트/쇼핑, 금융/카드, 통신, 외식, 여행/숙박, 독서/교육, OTT/구독, 공공/기타, 기타 중 하나\n- summary: 핵심 혜택만 25자 이내. 인사말/브랜드명/URL/전화번호 제외. 1+1, 30% 할인, 6개월 추가 제공 같은 혜택 내용\n- end_date: YYYY-MM-DD 형식. 없으면 null\n- location: 특정 지역이면 지역명, 앱 전용이면 앱전용, 온라인이면 온라인, 전국이면 전국\n- trust_score: 0~100. 브랜드명확+30 구체적혜택+20 유효기간+15 발신자확인+10 지역명시+5 / 비현실적할인-40 개인정보요구-30 공공기관-10\n- is_fake: 비현실적혜택이나 개인정보요구면 true\n\n반드시 이 JSON 형식으로만: {"brand":"","category":"","summary":"","end_date":null,"location":"전국","trust_score":0,"is_fake":false}';
+  var prompt = '너는 한국 광고 SMS 분석 전문가야. 아래 SMS를 읽고 JSON으로만 응답해. JSON 외 어떤 텍스트도 마크다운도 절대 출력하지 마.\n\n## SMS 원문\n' + smsText + '\n\n## 각 항목 추출 방법\n\nbrand (브랜드명):\n  우선순위1: [대괄호]안 텍스트 중 실제 브랜드인 것 → [당근영어]=당근영어, [스타벅스]=스타벅스\n  우선순위2: "OO입니다" "OO에서" 패턴에서 OO\n  우선순위3: 문자에서 반복 등장하는 업체명\n  절대제외: Web발신, 광고, 전화번호, URL, 수신거부번호\n  없으면: 알수없음\n\ncategory (카테고리):\n  음료/카페, 편의점, 배달앱, 패션/의류, 뷰티/헬스, 마트/쇼핑, 금융/카드, 통신, 외식, 여행/숙박, 독서/교육, OTT/구독, 공공/기타, 기타 중 하나\n\nsummary (핵심요약 25자이내):\n  이 문자를 받은 사람이 얻을 수 있는 가장 핵심적인 혜택이나 제안을 요약\n  우선순위1: 할인/무료/증정 등 직접 혜택 (예: 1+1, 30%할인, 무료체험)\n  우선순위2: 핵심 행동 유도 내용 (예: 1:1무료체험수업, 무료레벨테스트)\n  우선순위3: 핵심 메시지 (예: 연 7% 적금 가입 안내)\n  절대제외: 인사말, 브랜드명, URL, 전화번호, 수신거부\n\nend_date (유효기간):\n  YYYY-MM-DD 형식. 기간/날짜 언급 없으면 null\n\nlocation (지역):\n  특정 지역명, 앱전용, 온라인, 전국 중 하나\n\ntrust_score (신뢰도 0~100):\n  브랜드명확+30, 구체적혜택+20, 유효기간있음+15, 발신자확인+10, 지역명시+5\n  비현실적할인-40, 개인정보요구-30, 공공기관-10\n\nis_fake: 비현실적이거나 개인정보요구면 true, 아니면 false\n\n## 출력 형식 (반드시 이것만)\n{"brand":"","category":"","summary":"","end_date":null,"location":"전국","trust_score":0,"is_fake":false}';
 
   try {
     var res = await fetch(
