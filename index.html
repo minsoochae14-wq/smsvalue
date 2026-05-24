@@ -360,7 +360,7 @@ function onInput() {
   aiTimer = setTimeout(showAI, 1400);
 }
 
-// ── Gemini API 키 설정 ──
+// Gemini API Key
 var GEMINI_KEY = 'AIzaSyAIz4ebBEV_MkSezXp_DWSiUK7-akVjbg0';
 
 function showAI() {
@@ -414,7 +414,7 @@ function pad(n){ return String(n).padStart(2,'0'); }
 
 function ruleBasedAnalysis(text) {
 
-  // ── 브랜드 DB: 발신번호/키워드 → 실제 브랜드명 + 카테고리 ──
+  // ---
   var BRAND_DB = [
     // 카페/음료
     {keys:['스타벅스','STARBUCKS','Starbucks'], brand:'스타벅스', cat:'음료/카페'},
@@ -519,10 +519,10 @@ function ruleBasedAnalysis(text) {
     {keys:['행정안전부','보건복지부','고용노동부'], brand:'공공기관', cat:'공공/기타'},
   ];
 
-  // ── STEP 1: 텍스트 전처리 — 긴 문자는 앞 300자만 분석 ──
+  // ---
   var shortText = text.length > 300 ? text.substring(0, 300) : text;
 
-  // ── STEP 2: 발신자 추출 — 대괄호 안 첫 번째 항목 ──
+  // ---
   var rawSender = '';
   var allBrackets = text.match(/\[([^\]]+)\]/g) || [];
   for(var ab=0; ab<allBrackets.length; ab++) {
@@ -535,7 +535,7 @@ function ruleBasedAnalysis(text) {
     }
   }
 
-  // ── STEP 3: 브랜드 DB 매칭 ──
+  // ---
   var brand = '';
   var category = '';
   var fullText = rawSender + ' ' + text;
@@ -552,7 +552,7 @@ function ruleBasedAnalysis(text) {
     if(brand) break;
   }
 
-  // ── STEP 4: 브랜드 못 찾으면 문자에서 직접 추출 ──
+  // ---
   if(!brand) {
     // 시도 1: "안녕하세요. OO입니다" 패턴 — 동네 가게 가장 흔한 패턴
     var introMatch = text.match(/(?:안녕하세요[.,!\s]*)?([가-힣a-zA-Z0-9\s&]{2,20}?)(?:입니다|에서\s*알려|에서\s*드립|에서\s*보내)/);
@@ -580,7 +580,7 @@ function ruleBasedAnalysis(text) {
     if(!brand) brand = '알수없음';
   }
 
-  // ── STEP 5: 카테고리 못 찾으면 키워드로 추출 ──
+  // ---
   if(!category) {
     var KEYWORD_CAT = [
       {cat:'음료/카페', keys:['커피','아메리카노','라떼','카페','음료','버블티']},
@@ -608,7 +608,7 @@ function ruleBasedAnalysis(text) {
     if(!category) category = '기타';
   }
 
-  // ── STEP 6: 혜택 요약 — 핵심만 20자 이내로 ──
+  // ---
   var summary = '';
 
   // 인사말 제거한 클린 텍스트 준비
@@ -655,7 +655,7 @@ function ruleBasedAnalysis(text) {
     if(firstLine.length > 3) summary = firstLine.substring(0,25);
   }
 
-  // ── STEP 7: 유효기간 ──
+  // ---
   var endDate = null;
   var now2 = new Date();
   var year2 = now2.getFullYear();
@@ -672,7 +672,7 @@ function ruleBasedAnalysis(text) {
     if(dm) { endDate = datePatterns[dp].fn(dm); break; }
   }
 
-  // ── STEP 8: 지역 ──
+  // ---
   var location = '전국';
   if(/앱\s*(전용|한정|only)/i.test(text) || text.includes('앱에서') || text.includes('앱 쿠폰')) location = '앱전용';
   else if(text.includes('온라인') || text.includes('홈페이지')) location = '온라인';
@@ -681,7 +681,7 @@ function ruleBasedAnalysis(text) {
     if(locMatch2) location = (locMatch2[1]||locMatch2[2]).trim();
   }
 
-  // ── STEP 9: 신뢰도 점수 ──
+  // ---
   // 기준: 브랜드 인식(+30) 혜택요약(+20) 유효기간(+15) 발신자확인(+10) 지역명시(+5)
   // 감점: 비현실적할인(-40) 개인정보요구(-30) 공공기관(-10) 너무짧음(-20)
   var score = 20;
