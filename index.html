@@ -382,6 +382,7 @@ async function analyzeSMS(smsText) {
 }
 
 async function callGeminiAPI(smsText) {
+  console.log('Gemini 호출 시작. 키:', GEMINI_KEY.substring(0,10) + '...');
   var prompt = '너는 한국 광고 SMS 전문 분석가야.\n\n아래 SMS를 읽고 brand, category, summary, end_date, location, trust_score, is_fake 를 JSON으로만 추출해줘. JSON 외 다른 텍스트 절대 출력하지 마.\n\nSMS:\n' + smsText + '\n\n추출 규칙:\n- brand: 문자를 보낸 실제 업체명. [대괄호]안 텍스트가 업체명이면 그대로 사용. 단 Web발신/광고는 제외. 없으면 알수없음\n- category: 음료/카페, 편의점, 배달앱, 패션/의류, 뷰티/헬스, 마트/쇼핑, 금융/카드, 통신, 외식, 여행/숙박, 독서/교육, OTT/구독, 공공/기타, 기타 중 하나\n- summary: 이 문자의 핵심 혜택이나 제안을 20자 이내로. 도입부/인사말 제외하고 실제 혜택이나 행동유도 내용\n- end_date: YYYY-MM-DD 형식. 없으면 null\n- location: 특정 지역명 또는 앱전용 또는 온라인 또는 전국\n- trust_score: 0~100\n- is_fake: true 또는 false\n\nJSON만 출력:';
 
   try {
@@ -398,9 +399,12 @@ async function callGeminiAPI(smsText) {
     );
     if(!res.ok) throw new Error('오류 ' + res.status);
     var data = await res.json();
+    console.log('Gemini 응답:', data);
     var raw = data.candidates[0].content.parts[0].text.trim()
       .replace(/```json/g,'').replace(/```/g,'').trim();
+    console.log('파싱할 텍스트:', raw);
     var parsed = JSON.parse(raw);
+    console.log('파싱 결과:', parsed);
     document.getElementById('analyzing').classList.remove('show');
     showAIResult(parsed);
   } catch(e) {
