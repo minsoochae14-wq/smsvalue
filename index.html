@@ -361,7 +361,7 @@ function onInput() {
 }
 
 // Gemini API Key
-var GEMINI_KEY = 'AIzaSyDxyEhyg2ELuvDrEQqAfFaUfTSRgRMwijg';
+var GEMINI_KEY = 'AIzaSyAIz4ebBEV_MkSezXp_DWSiUK7-akVjbg0';
 
 function showAI() {
   var smsText = document.getElementById('smsTA').value.trim();
@@ -393,7 +393,7 @@ async function callGeminiAPI(smsText) {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           contents: [{parts: [{text: prompt}]}],
-          generationConfig: {temperature: 0.1, maxOutputTokens: 300}
+          generationConfig: {temperature: 0.1, maxOutputTokens: 1000}
         })
       }
     );
