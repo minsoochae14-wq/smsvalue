@@ -371,14 +371,7 @@ function showAI() {
 async function analyzeSMS(smsText) {
   document.getElementById('analyzing').classList.add('show');
   document.getElementById('resultCard').classList.remove('show');
-  if(GEMINI_KEY && GEMINI_KEY.startsWith('AIza')) {
-    await callGeminiAPI(smsText);
-  } else {
-    setTimeout(function(){
-      document.getElementById('analyzing').classList.remove('show');
-      showAIResult(ruleBasedAnalysis(smsText));
-    }, 800);
-  }
+  await callGeminiAPI(smsText);
 }
 
 async function callGeminiAPI(smsText) {
@@ -393,28 +386,42 @@ async function callGeminiAPI(smsText) {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
           contents: [{parts: [{text: prompt}]}],
-          generationConfig: {temperature: 0.1, maxOutputTokens: 1000}
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 2000,
+            thinkingConfig: {thinkingBudget: 0}
+          }
         })
       }
     );
     if(!res.ok) throw new Error('오류 ' + res.status);
     var data = await res.json();
-    console.log('Gemini 응답:', data);
-    var raw = data.candidates[0].content.parts[0].text.trim();
-    console.log('원본 텍스트:', raw);
-    // JSON 블록 추출 — 마크다운 코드블록 또는 순수 JSON
-    var jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if(!jsonMatch) throw new Error('JSON 없음');
-    var jsonStr = jsonMatch[0];
-    console.log('파싱할 JSON:', jsonStr);
-    var parsed = JSON.parse(jsonStr);
+    console.log('Gemini 전체 응답:', JSON.stringify(data).substring(0, 500));
+    
+    // thinking 모드 응답 처리 — parts 배열에서 텍스트만 추출
+    var parts = data.candidates[0].content.parts;
+    var rawText = '';
+    for(var pi=0; pi<parts.length; pi++) {
+      if(parts[pi].text) rawText += parts[pi].text;
+    }
+    rawText = rawText.trim();
+    console.log('전체 텍스트:', rawText);
+    
+    // JSON 블록 추출
+    var jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if(!jsonMatch) throw new Error('JSON 없음: ' + rawText.substring(0,100));
+    var parsed = JSON.parse(jsonMatch[0]);
     console.log('파싱 결과:', parsed);
     document.getElementById('analyzing').classList.remove('show');
     showAIResult(parsed);
   } catch(e) {
     console.error('Gemini 오류:', e);
     document.getElementById('analyzing').classList.remove('show');
-    showAIResult(ruleBasedAnalysis(smsText));
+    document.getElementById('analyzing').innerHTML = '<span style="color:#E24B4A;font-size:14px">분석 오류: ' + e.message + '<br>다시 시도해주세요</span>';
+    document.getElementById('analyzing').classList.add('show');
+    var btn = document.getElementById('submitOk');
+    btn.disabled = false;
+    btn.textContent = '다시 시도하기';
   }
 }
 
