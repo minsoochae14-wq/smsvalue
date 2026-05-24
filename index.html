@@ -206,8 +206,16 @@ var AI_POOL = [
 
 function init() {
   try {
-    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  } catch(e) { db = null; }
+    if(window.supabase) {
+      db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      console.log('Supabase 초기화 성공');
+    } else {
+      console.error('Supabase 라이브러리 로드 실패');
+    }
+  } catch(e) {
+    console.error('Supabase 초기화 오류:', e);
+    db = null;
+  }
 
   document.getElementById('fabBtn').addEventListener('click', openSheet);
   document.getElementById('navSubmit').addEventListener('click', openSheet);
@@ -235,11 +243,10 @@ function init() {
 function loadData() {
   if(db) {
     fetchData();
-    // 5초마다 자동 새로고침
     setInterval(fetchData, 5000);
   } else {
-    allItems = MOCK;
-    renderList();
+    console.error('Supabase 초기화 실패');
+    document.getElementById('listWrap').innerHTML = '<div class="empty-state"><i class="ti ti-alert-circle"></i><p>DB 연결 실패<br>페이지를 새로고침해주세요</p></div>';
   }
 }
 
@@ -249,10 +256,19 @@ function fetchData() {
     .eq('status','approved')
     .order('created_at',{ascending:false})
     .then(function(res){
-      if(!res.error && res.data) {
+      if(res.error) {
+        console.error('fetchData 오류:', res.error);
+        document.getElementById('listWrap').innerHTML = '<div class="empty-state"><i class="ti ti-alert-circle"></i><p>데이터 로드 실패<br>' + res.error.message + '</p></div>';
+        return;
+      }
+      if(res.data) {
         allItems = res.data;
         renderList();
       }
+    })
+    .catch(function(e){
+      console.error('네트워크 오류:', e);
+      document.getElementById('listWrap').innerHTML = '<div class="empty-state"><i class="ti ti-wifi-off"></i><p>네트워크 오류<br>인터넷 연결을 확인해주세요</p></div>';
     });
 }
 
@@ -345,8 +361,7 @@ function onInput() {
 }
 
 // ── Gemini API 키 설정 ──
-var GEMINI_KEY = 'AIzaSyAIz4ebBEV_MkSezXp_DWSiUK7-akVjbg0
-';
+var GEMINI_KEY = 'AIzaSyAIz4ebBEV_MkSezXp_DWSiUK7-akVjbg0';
 
 function showAI() {
   var smsText = document.getElementById('smsTA').value.trim();
@@ -356,8 +371,7 @@ function showAI() {
 async function analyzeSMS(smsText) {
   document.getElementById('analyzing').classList.add('show');
   document.getElementById('resultCard').classList.remove('show');
-  if(GEMINI_KEY && GEMINI_KEY !== 'AIzaSyAIz4ebBEV_MkSezXp_DWSiUK7-akVjbg0
-') {
+  if(GEMINI_KEY && GEMINI_KEY.startsWith('AIza')) {
     await callGeminiAPI(smsText);
   } else {
     setTimeout(function(){
