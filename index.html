@@ -478,6 +478,16 @@ function ruleBasedAnalysis(text) {
     {keys:['왓챠','WATCHA'], brand:'왓챠', cat:'OTT/구독'},
     {keys:['웨이브','wavve'], brand:'웨이브', cat:'OTT/구독'},
     {keys:['티빙','TVING'], brand:'티빙', cat:'OTT/구독'},
+    {keys:['밀리의서재','밀리의 서재','밀리에서','millie','MILLIE','short.millie'], brand:'밀리의서재', cat:'독서/교육'},
+    {keys:['리디북스','리디','RIDI'], brand:'리디북스', cat:'독서/교육'},
+    {keys:['예스24','YES24'], brand:'예스24', cat:'독서/교육'},
+    {keys:['교보문고','KYOBO'], brand:'교보문고', cat:'독서/교육'},
+    {keys:['클래스101','CLASS101'], brand:'클래스101', cat:'독서/교육'},
+    {keys:['패스트캠퍼스','FASTCAMPUS'], brand:'패스트캠퍼스', cat:'독서/교육'},
+    {keys:['디즈니플러스','Disney+','디즈니+'], brand:'디즈니+', cat:'OTT/구독'},
+    {keys:['웨이브','wavve'], brand:'웨이브', cat:'OTT/구독'},
+    {keys:['당근마켓','당근','DAANGN'], brand:'당근마켓', cat:'IT/앱'},
+    {keys:['번개장터','BUNJANG'], brand:'번개장터', cat:'IT/앱'},
     {keys:['카카오톡','KAKAO'], brand:'카카오', cat:'IT/앱'},
     {keys:['네이버','NAVER'], brand:'네이버', cat:'IT/앱'},
     // 공공기관 필터링
@@ -519,9 +529,33 @@ function ruleBasedAnalysis(text) {
     if(brand) break;
   }
 
-  // ── STEP 4: 브랜드 못 찾으면 발신자 정제해서 사용 ──
+  // ── STEP 4: 브랜드 못 찾으면 문자에서 직접 추출 ──
   if(!brand) {
-    brand = rawSender || '알수없음';
+    // 시도 1: 발신자가 유효하면 그대로 사용
+    if(rawSender && rawSender.length >= 2 && !/^[\d\s\-\+]+$/.test(rawSender)) {
+      brand = rawSender;
+    }
+    // 시도 2: 본문에서 브랜드명 패턴 추출
+    // "OO에서", "OO입니다", "OO 고객님", "OO 드림" 앞의 단어 추출
+    if(!brand || brand === '알수없음') {
+      var patterns = [
+        /([가-힣a-zA-Z0-9]+(?:치킨|피자|족발|삼겹|고기|횟집|갈비|냉면|국밥|분식|카페|커피|베이커리|빵|케이크|마트|슈퍼|약국|병원|헬스|헤어|네일|쇼핑|몰|스토어|샵|shop|store))/,
+        /([가-힣]{2,10}(?:에서|입니다|드림|올림|배송|알림|안내))/,
+        /([가-힣a-zA-Z]{2,15})\s*고객님/,
+        /([가-힣a-zA-Z]{2,15})\s*회원님/,
+        /안녕하세요[,\s]*([가-힣a-zA-Z0-9\s]{2,15})(?:입니다|에서|드림)/,
+        /([가-힣a-zA-Z0-9]{2,15})에서\s*보내/,
+      ];
+      for(var pt=0; pt<patterns.length; pt++) {
+        var pm = text.match(patterns[pt]);
+        if(pm && pm[1]) {
+          var candidate = pm[1].replace(/에서|입니다|드림|올림|배송|알림|안내|고객님|회원님/g,'').trim();
+          if(candidate.length >= 2) { brand = candidate; break; }
+        }
+      }
+    }
+    // 시도 3: 그래도 없으면 알수없음
+    if(!brand) brand = '알수없음';
   }
 
   // ── STEP 5: 카테고리 못 찾으면 키워드로 추출 ──
