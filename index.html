@@ -243,7 +243,7 @@ function init() {
 function loadData() {
   if(db) {
     fetchData();
-    setInterval(fetchData, 30000);
+    setInterval(fetchData, 5000);
   } else {
     console.error('Supabase 초기화 실패');
     document.getElementById('listWrap').innerHTML = '<div class="empty-state"><i class="ti ti-alert-circle"></i><p>DB 연결 실패<br>페이지를 새로고침해주세요</p></div>';
@@ -361,7 +361,7 @@ function onInput() {
 }
 
 // Gemini API Key
-var GEMINI_KEY = 'AIzaSyDxyEhyg2ELuvDrEQqAfFaUfTSRgRMwijg';
+var GEMINI_KEY = 'AIzaSyAIz4ebBEV_MkSezXp_DWSiUK7-akVjbg0';
 
 function showAI() {
   var smsText = document.getElementById('smsTA').value.trim();
@@ -400,10 +400,14 @@ async function callGeminiAPI(smsText) {
     if(!res.ok) throw new Error('오류 ' + res.status);
     var data = await res.json();
     console.log('Gemini 응답:', data);
-    var raw = data.candidates[0].content.parts[0].text.trim()
-      .replace(/```json/g,'').replace(/```/g,'').trim();
-    console.log('파싱할 텍스트:', raw);
-    var parsed = JSON.parse(raw);
+    var raw = data.candidates[0].content.parts[0].text.trim();
+    console.log('원본 텍스트:', raw);
+    // JSON 블록 추출 — 마크다운 코드블록 또는 순수 JSON
+    var jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if(!jsonMatch) throw new Error('JSON 없음');
+    var jsonStr = jsonMatch[0];
+    console.log('파싱할 JSON:', jsonStr);
+    var parsed = JSON.parse(jsonStr);
     console.log('파싱 결과:', parsed);
     document.getElementById('analyzing').classList.remove('show');
     showAIResult(parsed);
