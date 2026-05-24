@@ -486,12 +486,23 @@ function ruleBasedAnalysis(text) {
     {keys:['행정안전부','보건복지부','고용노동부'], brand:'공공기관', cat:'공공/기타'},
   ];
 
-  // ── STEP 1: 발신자(대괄호) 추출 ──
-  var rawSender = '';
-  var senderMatch = text.match(/^\s*\[([^\]]+)\]/);
-  if(senderMatch) rawSender = senderMatch[1].trim();
+  // ── STEP 1: 텍스트 전처리 — 긴 문자는 앞 300자만 분석 ──
+  var shortText = text.length > 300 ? text.substring(0, 300) : text;
 
-  // ── STEP 2: 브랜드 DB 매칭 (발신자 + 본문 전체 검색) ──
+  // ── STEP 2: 발신자 추출 — 대괄호 안 첫 번째 항목 ──
+  var rawSender = '';
+  var allBrackets = text.match(/\[([^\]]+)\]/g) || [];
+  for(var ab=0; ab<allBrackets.length; ab++) {
+    var inner = allBrackets[ab].replace(/[\[\]]/g,'').trim();
+    var NOISE_WORDS = ['web발신','Web발신','WEB발신','광고','앱','APP','수신거부','무료','080','클릭','바로가기','이벤트'];
+    var isNoise = NOISE_WORDS.some(function(n){ return inner.includes(n); });
+    if(!isNoise && inner.length >= 2 && !/^[\d\s\-]+$/.test(inner)) {
+      rawSender = inner;
+      break;
+    }
+  }
+
+  // ── STEP 3: 브랜드 DB 매칭 ──
   var brand = '';
   var category = '';
   var fullText = rawSender + ' ' + text;
@@ -508,31 +519,26 @@ function ruleBasedAnalysis(text) {
     if(brand) break;
   }
 
-  // ── STEP 3: 브랜드 못 찾으면 발신자 정제 ──
+  // ── STEP 4: 브랜드 못 찾으면 발신자 정제해서 사용 ──
   if(!brand) {
-    var NOISE = ['web발신','Web발신','WEB발신','광고','[광고]','(광고)','수신거부','무료수신거부','080','☞','→','http','https'];
-    var cleaned = rawSender;
-    NOISE.forEach(function(n){ cleaned = cleaned.replace(n,'').trim(); });
-    // 숫자만 남은 경우 (전화번호) 제거
-    if(/^[\d\-\+\s]+$/.test(cleaned)) cleaned = '';
-    brand = cleaned || '알수없음';
+    brand = rawSender || '알수없음';
   }
 
-  // ── STEP 4: 카테고리 못 찾으면 본문 키워드로 추출 ──
+  // ── STEP 5: 카테고리 못 찾으면 키워드로 추출 ──
   if(!category) {
     var KEYWORD_CAT = [
-      {cat:'음료/카페', keys:['커피','아메리카노','라떼','카페','음료','버블티','프라푸치노']},
+      {cat:'음료/카페', keys:['커피','아메리카노','라떼','카페','음료','버블티']},
       {cat:'편의점', keys:['편의점','도시락','삼각김밥','컵라면']},
-      {cat:'배달앱', keys:['배달','주문','치킨','피자','족발','보쌈','짜장','짬뽕']},
-      {cat:'패션/의류', keys:['의류','패션','옷','티셔츠','바지','자켓','코트','신발']},
-      {cat:'뷰티/헬스', keys:['화장품','스킨케어','마스크팩','립','파운데이션','선크림','헬스']},
-      {cat:'마트/쇼핑', keys:['마트','쇼핑','장보기','생필품','식료품']},
-      {cat:'금융/카드', keys:['카드','포인트','캐시백','적립','혜택','할인','결제','이자','대출']},
+      {cat:'배달앱', keys:['배달','주문','치킨','피자','족발','보쌈']},
+      {cat:'패션/의류', keys:['의류','패션','옷','티셔츠','신발','코트']},
+      {cat:'뷰티/헬스', keys:['화장품','스킨케어','마스크팩','선크림','헬스']},
+      {cat:'마트/쇼핑', keys:['마트','쇼핑','장보기','생필품']},
+      {cat:'금융/카드', keys:['적금','카드','금리','이자','대출','캐시백','포인트','저축','은행']},
       {cat:'통신', keys:['데이터','요금','통화','인터넷','5G','LTE','로밍']},
-      {cat:'외식/패스트푸드', keys:['햄버거','세트','버거','치킨','감자튀김']},
-      {cat:'여행/숙박', keys:['호텔','숙소','펜션','여행','항공','숙박']},
-      {cat:'OTT/구독', keys:['구독','스트리밍','영화','드라마','콘텐츠']},
-      {cat:'공공/기타', keys:['안내','알림','공지','신청','접수','지원','복지']}
+      {cat:'외식', keys:['햄버거','버거','치킨','피자','감자튀김']},
+      {cat:'여행/숙박', keys:['호텔','숙소','펜션','여행','항공']},
+      {cat:'OTT/구독', keys:['구독','스트리밍','영화','드라마']},
+      {cat:'공공/기타', keys:['안내','알림','공지','신청','접수','복지']}
     ];
     for(var k=0; k<KEYWORD_CAT.length; k++) {
       for(var l=0; l<KEYWORD_CAT[k].keys.length; l++) {
@@ -546,34 +552,36 @@ function ruleBasedAnalysis(text) {
     if(!category) category = '기타';
   }
 
-  // ── STEP 5: 혜택 요약 ──
+  // ── STEP 6: 혜택 요약 — 핵심만 20자 이내로 ──
   var summary = '';
+
+  // 패턴 1: 숫자+단위 혜택 (1+1, 50% 할인, 3000원 할인 등)
   var benefitPatterns = [
-    /(\d+\+\d+)/,
-    /(\d+%\s*(?:할인|off|OFF))/,
-    /(\d+원\s*(?:할인|쿠폰|적립|즉시할인))/,
-    /(무료\s*(?:배송|쿠폰|증정|제공))/,
-    /((?:최대|최고)?\s*\d+%\s*할인)/,
-    /(쿠폰\s*\d+원)/,
-    /(\d+만원?\s*할인)/,
+    /최대\s*연\s*[\d.]+%[^,。\n]{0,15}/,
+    /연\s*[\d.]+%[^,。\n]{0,10}/,
+    /\d+\+\d+/,
+    /\d+%\s*(?:할인|캐시백|적립)/,
+    /\d+만?\s*원\s*(?:할인|쿠폰|즉시할인|적립)/,
+    /무료\s*(?:배송|쿠폰|증정|이용|제공)/,
+    /(?:최대|최고)\s*\d+%/,
   ];
   for(var p=0; p<benefitPatterns.length; p++) {
-    var bm = text.match(benefitPatterns[p]);
-    if(bm) { summary = bm[0].trim(); break; }
-  }
-  if(!summary) {
-    var keywords = ['할인','쿠폰','무료','이벤트','혜택','적립','증정','선물'];
-    for(var q=0; q<keywords.length; q++) {
-      var idx = text.indexOf(keywords[q]);
-      if(idx >= 0) {
-        summary = text.substring(Math.max(0,idx-6), idx+10).trim();
-        break;
-      }
+    var bm = shortText.match(benefitPatterns[p]);
+    if(bm) {
+      summary = bm[0].replace(/\s+/g,' ').trim();
+      if(summary.length > 20) summary = summary.substring(0,20);
+      break;
     }
   }
-  if(!summary) summary = text.replace(/\[.*?\]/g,'').trim().substring(0,20);
 
-  // ── STEP 6: 유효기간 ──
+  // 패턴 2: 문장 첫 줄에서 핵심 추출
+  if(!summary) {
+    var firstLine = text.replace(/\[.*?\]/g,'').replace(/\(.*?\)/g,'').trim();
+    firstLine = firstLine.split(/[!！\n]/)[0].trim();
+    if(firstLine.length > 3) summary = firstLine.substring(0,20);
+  }
+
+  // ── STEP 7: 유효기간 ──
   var endDate = null;
   var now2 = new Date();
   var year2 = now2.getFullYear();
@@ -590,26 +598,28 @@ function ruleBasedAnalysis(text) {
     if(dm) { endDate = datePatterns[dp].fn(dm); break; }
   }
 
-  // ── STEP 7: 지역 ──
+  // ── STEP 8: 지역 ──
   var location = '전국';
   if(/앱\s*(전용|한정|only)/i.test(text) || text.includes('앱에서') || text.includes('앱 쿠폰')) location = '앱전용';
   else if(text.includes('온라인') || text.includes('홈페이지')) location = '온라인';
   else {
-    var locMatch2 = text.match(/([가-힣]{2,6}[시군구])\s|([가-힣]{2,6}점)\s/);
+    var locMatch2 = text.match(/([가-힣]{2,5}[시군구])\s|([가-힣]{2,5}점)\s/);
     if(locMatch2) location = (locMatch2[1]||locMatch2[2]).trim();
   }
 
-  // ── STEP 8: 신뢰도 ──
+  // ── STEP 9: 신뢰도 점수 ──
+  // 기준: 브랜드 인식(+30) 혜택요약(+20) 유효기간(+15) 발신자확인(+10) 지역명시(+5)
+  // 감점: 비현실적할인(-40) 개인정보요구(-30) 공공기관(-10) 너무짧음(-20)
   var score = 20;
-  if(brand && brand !== '알수없음' && brand !== '공공기관') score += 30;
-  if(endDate) score += 20;
-  if(summary && summary.length > 3) score += 15;
-  if(location !== '전국') score += 10;
-  if(rawSender && rawSender.length > 0) score += 5;
+  if(brand && brand !== '알수없음') score += 30;
+  if(summary && summary.length > 3) score += 20;
+  if(endDate) score += 15;
+  if(rawSender && rawSender.length >= 2) score += 10;
+  if(location !== '전국') score += 5;
   if(/100%\s*무료|전부\s*공짜|완전\s*무료/.test(text)) score -= 40;
+  if(/개인정보|비밀번호|계좌번호/.test(text)) score -= 30;
   if(category === '공공/기타') score -= 10;
   if(text.length < 15) score -= 20;
-  if(/개인정보|비밀번호|계좌번호/.test(text)) score -= 30;
   score = Math.max(5, Math.min(100, score));
 
   return { brand:brand, category:category, summary:summary, end_date:endDate, location:location, trust_score:score, is_fake:score<20 };
