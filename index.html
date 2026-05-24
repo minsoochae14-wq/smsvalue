@@ -345,7 +345,8 @@ function onInput() {
 }
 
 // ── Gemini API 키 설정 ──
-var GEMINI_KEY = 'YOUR_GEMINI_KEY';
+var GEMINI_KEY = 'AIzaSyAIz4ebBEV_MkSezXp_DWSiUK7-akVjbg0
+';
 
 function showAI() {
   var smsText = document.getElementById('smsTA').value.trim();
@@ -355,7 +356,8 @@ function showAI() {
 async function analyzeSMS(smsText) {
   document.getElementById('analyzing').classList.add('show');
   document.getElementById('resultCard').classList.remove('show');
-  if(GEMINI_KEY && GEMINI_KEY !== 'YOUR_GEMINI_KEY') {
+  if(GEMINI_KEY && GEMINI_KEY !== 'AIzaSyAIz4ebBEV_MkSezXp_DWSiUK7-akVjbg0
+') {
     await callGeminiAPI(smsText);
   } else {
     setTimeout(function(){
