@@ -344,46 +344,53 @@ function onInput() {
   aiTimer = setTimeout(showAI, 1400);
 }
 
+// ── Gemini API 키 설정 ──
+var GEMINI_KEY = 'AIzaSyAsltXrT6cWsku4AJl7ocVfMCc4ASHm_HI';
+
 function showAI() {
   var smsText = document.getElementById('smsTA').value.trim();
-  callClaudeAPI(smsText);
+  analyzeSMS(smsText);
 }
 
-async function callClaudeAPI(smsText) {
+async function analyzeSMS(smsText) {
   document.getElementById('analyzing').classList.add('show');
   document.getElementById('resultCard').classList.remove('show');
+  if(GEMINI_KEY && GEMINI_KEY !== 'YOUR_GEMINI_KEY') {
+    await callGeminiAPI(smsText);
+  } else {
+    setTimeout(function(){
+      document.getElementById('analyzing').classList.remove('show');
+      showAIResult(ruleBasedAnalysis(smsText));
+    }, 800);
+  }
+}
 
-  var prompt = '다음 한국 브랜드 광고 SMS를 분석해서 JSON으로만 응답해. JSON 외 다른 텍스트는 절대 출력하지 마.\n\nSMS: ' + smsText + '\n\n출력 형식:\n{\n  "brand": "브랜드명 (발신자 이름 또는 문자 내용에서 추출. 모르면 알수없음)",\n  "category": "다음 중 하나만 선택: 음료/카페, 편의점, 배달, 패션, 뷰티, 마트/쇼핑, 금융, 통신, 외식, 기타",\n  "summary": "혜택 핵심 내용 20자 이내 요약",\n  "end_date": "YYYY-MM-DD 형식. 날짜 없으면 null",\n  "location": "지역명. 전국이면 전국, 앱이면 앱전용, 없으면 전국",\n  "trust_score": 0에서 100 사이 숫자. 브랜드명확+30 유효기간있음+20 구체적혜택+20 지역명시+10 비현실적할인-50 정보부족-20,\n  "is_fake": true 또는 false\n}';
+async function callGeminiAPI(smsText) {
+  var prompt = '다음 한국 광고 문자(SMS)를 분석해서 JSON으로만 응답해. JSON 외 다른 텍스트나 마크다운 코드블록 절대 쓰지 마.\n\nSMS 원문:\n' + smsText + '\n\n분석 규칙:\n- brand: 발신자명 또는 문자 내용에서 브랜드/업체명 추출. "안녕하세요 OO입니다"에서 OO가 브랜드. [Web발신](광고)전화번호는 브랜드 아님. 모르면 알수없음\n- category: 음료/카페, 편의점, 배달앱, 패션/의류, 뷰티/헬스, 마트/쇼핑, 금융/카드, 통신, 외식, 여행/숙박, 독서/교육, OTT/구독, 공공/기타, 기타 중 하나\n- summary: 핵심 혜택만 25자 이내. 인사말/브랜드명/URL/전화번호 제외. 1+1, 30% 할인, 6개월 추가 제공 같은 혜택 내용\n- end_date: YYYY-MM-DD 형식. 없으면 null\n- location: 특정 지역이면 지역명, 앱 전용이면 앱전용, 온라인이면 온라인, 전국이면 전국\n- trust_score: 0~100. 브랜드명확+30 구체적혜택+20 유효기간+15 발신자확인+10 지역명시+5 / 비현실적할인-40 개인정보요구-30 공공기관-10\n- is_fake: 비현실적혜택이나 개인정보요구면 true\n\n반드시 이 JSON 형식으로만: {"brand":"","category":"","summary":"","end_date":null,"location":"전국","trust_score":0,"is_fake":false}';
 
   try {
-    var res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': window.CLAUDE_KEY || '',
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5',
-        max_tokens: 500,
-        messages: [{role:'user', content: prompt}]
-      })
-    });
-
-    if(!res.ok) throw new Error('API 오류');
+    var res = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_KEY,
+      {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          contents: [{parts: [{text: prompt}]}],
+          generationConfig: {temperature: 0.1, maxOutputTokens: 300}
+        })
+      }
+    );
+    if(!res.ok) throw new Error('오류 ' + res.status);
     var data = await res.json();
-    var text = data.content[0].text.trim();
-    text = text.replace(/```json/g,'').replace(/```/g,'').trim();
-    var parsed = JSON.parse(text);
+    var raw = data.candidates[0].content.parts[0].text.trim()
+      .replace(/```json/g,'').replace(/```/g,'').trim();
+    var parsed = JSON.parse(raw);
     document.getElementById('analyzing').classList.remove('show');
     showAIResult(parsed);
-
   } catch(e) {
-    // Claude API 키 없으면 규칙 기반으로 폴백
+    console.error('Gemini 오류:', e);
     document.getElementById('analyzing').classList.remove('show');
-    var fallbackResult = ruleBasedAnalysis(smsText);
-    showAIResult(fallbackResult);
+    showAIResult(ruleBasedAnalysis(smsText));
   }
 }
 
@@ -588,30 +595,48 @@ function ruleBasedAnalysis(text) {
   // ── STEP 6: 혜택 요약 — 핵심만 20자 이내로 ──
   var summary = '';
 
+  // 인사말 제거한 클린 텍스트 준비
+  var cleanText = text
+    .replace(/안녕하세요[.,!\s]*/g, '')
+    .replace(/[가-힣a-zA-Z0-9\s&]{2,20}(?:입니다|에서)[.,!\s]*/g, '')
+    .replace(/\[.*?\]/g, '')
+    .replace(/\(.*?\)/g, '')
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/\d{2,4}-\d{3,4}-\d{4}/g, '')
+    .replace(/무료수신거부.*$/g, '')
+    .trim();
+
   // 패턴 1: 숫자+단위 혜택 (1+1, 50% 할인, 3000원 할인 등)
   var benefitPatterns = [
     /최대\s*연\s*[\d.]+%[^,。\n]{0,15}/,
     /연\s*[\d.]+%[^,。\n]{0,10}/,
     /\d+\+\d+/,
-    /\d+%\s*(?:할인|캐시백|적립)/,
+    /\d+%\s*(?:할인|캐시백|적립|off)/,
     /\d+만?\s*원\s*(?:할인|쿠폰|즉시할인|적립)/,
     /무료\s*(?:배송|쿠폰|증정|이용|제공)/,
     /(?:최대|최고)\s*\d+%/,
+    /[가-힣]+\s*\d+(?:개월|회|박)\s*[가-힣]+\s*\d+(?:개월|회|박)\s*(?:추가|제공|무료)/,
+    /[가-힣]+\s*\d+(?:개월|회)\s*(?:등록|가입)[^,。\n]{0,10}/,
   ];
   for(var p=0; p<benefitPatterns.length; p++) {
-    var bm = shortText.match(benefitPatterns[p]);
+    var bm = cleanText.match(benefitPatterns[p]);
     if(bm) {
       summary = bm[0].replace(/\s+/g,' ').trim();
-      if(summary.length > 20) summary = summary.substring(0,20);
+      if(summary.length > 25) summary = summary.substring(0,25);
       break;
     }
   }
 
-  // 패턴 2: 문장 첫 줄에서 핵심 추출
+  // 패턴 2: 이벤트/혜택 문장 추출 — 번호 매긴 목록 첫 번째 항목
   if(!summary) {
-    var firstLine = text.replace(/\[.*?\]/g,'').replace(/\(.*?\)/g,'').trim();
-    firstLine = firstLine.split(/[!！\n]/)[0].trim();
-    if(firstLine.length > 3) summary = firstLine.substring(0,20);
+    var listMatch = cleanText.match(/1[.\)、]\s*([^\n!！]{3,30})/);
+    if(listMatch) summary = listMatch[1].trim().substring(0,25);
+  }
+
+  // 패턴 3: 클린 텍스트 첫 문장
+  if(!summary) {
+    var firstLine = cleanText.split(/[!！\n。]/)[0].trim();
+    if(firstLine.length > 3) summary = firstLine.substring(0,25);
   }
 
   // ── STEP 7: 유효기간 ──
