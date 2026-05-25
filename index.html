@@ -269,8 +269,12 @@ function init() {
 
 function loadData() {
   if(db) {
+    // 처음 접속 시 로드
     fetchData();
-    setInterval(fetchData, 5000);
+    // 탭 전환 시 로드 (다른 앱 갔다 돌아올 때)
+    document.addEventListener('visibilitychange', function(){
+      if(!document.hidden) fetchData();
+    });
   } else {
     console.error('Supabase 초기화 실패');
     document.getElementById('listWrap').innerHTML = '<div class="empty-state"><i class="ti ti-alert-circle"></i><p>DB 연결 실패<br>페이지를 새로고침해주세요</p></div>';
