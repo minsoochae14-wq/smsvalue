@@ -737,7 +737,15 @@ function doSubmit() {
   };
 
   if(db) {
-    db.from('sms_benefits').insert([item]).select()
+    db.rpc('upsert_sms_benefit', {
+      p_brand: aiResult.brand,
+      p_category: aiResult.category,
+      p_summary: aiResult.summary,
+      p_raw_sms: sms,
+      p_end_date: aiResult.end_date || null,
+      p_location: aiResult.location,
+      p_trust_score: aiResult.trust_score
+    })
       .then(function(res){
         if(res.error) {
           console.error('Supabase 저장 오류:', res.error);
@@ -746,9 +754,8 @@ function doSubmit() {
           btn.textContent = '다시 시도하기';
           return;
         }
-        console.log('Supabase 저장 성공:', res.data);
-        if(res.data && res.data[0]) allItems.unshift(res.data[0]);
-        onSubmitDone(item.status);
+        console.log('저장 성공:', res.data);
+        onSubmitDone();
       })
       .catch(function(e){
         console.error('네트워크 오류:', e);
@@ -759,11 +766,11 @@ function doSubmit() {
   } else {
     item.id = Date.now();
     allItems.unshift(item);
-    onSubmitDone(item.status);
+    onSubmitDone();
   }
 }
 
-function onSubmitDone(status) {
+function onSubmitDone() {
   var btn = document.getElementById('submitOk');
   btn.textContent = '제출 완료! 리스트에 추가됐어요';
   btn.style.background = '#085041';
