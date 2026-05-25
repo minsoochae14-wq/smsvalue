@@ -25,8 +25,17 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .scroll-area{flex:1;overflow-y:auto;padding-bottom:90px}
 .list-wrap{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
 .bcard{background:#fff;border:0.5px solid rgba(0,0,0,.08);border-radius:16px;padding:16px;cursor:pointer}
-.bcard-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.bcard-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .bbadge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;background:#E1F5EE;color:#085041}
+.catbadge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;background:#f0f0ec;color:#5F5E5A}
+.rank-badge{position:absolute;top:-1px;left:12px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:0 0 6px 6px}
+.r1{background:#FAEEDA;color:#633806}.r2{background:#F1EFE8;color:#444441}.r3{background:#FAECE7;color:#712B13}
+.brand-inline{font-weight:600;color:#111}
+.summary-inline{color:#666;font-weight:400}
+.sort-tabs{display:flex;background:#fff;border-bottom:0.5px solid rgba(0,0,0,.07);flex-shrink:0}
+.stab{flex:1;padding:10px 4px;font-size:12px;font-weight:500;color:#aaa;text-align:center;border-bottom:2px solid transparent;cursor:pointer;transition:all .12s}
+.stab.on{color:#1D9E75;border-bottom-color:#1D9E75}
+.hot-count{font-size:12px;font-weight:600;color:#D85A30;display:flex;align-items:center;gap:3px;margin-left:auto}
 .tbadge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px}
 .th{background:#EAF3DE;color:#3B6D11}
 .tm{background:#FAEEDA;color:#633806}
@@ -124,6 +133,11 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
       <input type="text" id="searchInput" placeholder="브랜드 또는 혜택 검색...">
     </div>
   </div>
+  <div class="sort-tabs" id="sortTabs">
+    <div class="stab on" data-sort="latest">최신순</div>
+    <div class="stab" data-sort="popular">인기순</div>
+    <div class="stab" data-sort="deadline">마감임박</div>
+  </div>
   <div class="filter-row" id="filterRow">
     <span class="chip on" data-cat="전체">전체</span>
     <span class="chip" data-cat="음료/카페">음료/카페</span>
@@ -187,6 +201,7 @@ var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 var db = null;
 var allItems = [];
 var currentFilter = '전체';
+var currentSort = 'latest';
 var aiResult = null;
 var aiTimer = null;
 
@@ -227,6 +242,16 @@ function init() {
   document.getElementById('smsTA').addEventListener('input', onInput);
   document.getElementById('submitOk').addEventListener('click', doSubmit);
   document.getElementById('searchInput').addEventListener('input', function(){ renderList(); });
+
+  // 정렬 탭
+  document.getElementById('sortTabs').addEventListener('click', function(e){
+    var tab = e.target.closest('.stab');
+    if(!tab) return;
+    document.querySelectorAll('.stab').forEach(function(t){ t.classList.remove('on'); });
+    tab.classList.add('on');
+    currentSort = tab.dataset.sort;
+    renderList();
+  });
 
   document.getElementById('filterRow').addEventListener('click', function(e){
     var chip = e.target.closest('.chip');
@@ -279,17 +304,50 @@ function renderList() {
     if(q && !(d.brand||'').toLowerCase().includes(q) && !(d.summary||'').toLowerCase().includes(q)) return false;
     return true;
   });
+
+  // 정렬
+  if(currentSort === 'popular') {
+    items = items.slice().sort(function(a,b){ return (b.submit_count||1)-(a.submit_count||1); });
+  } else if(currentSort === 'deadline') {
+    items = items.slice().sort(function(a,b){
+      if(!a.end_date) return 1;
+      if(!b.end_date) return -1;
+      return new Date(a.end_date)-new Date(b.end_date);
+    });
+  }
+
   var wrap = document.getElementById('listWrap');
   if(!items.length) {
     wrap.innerHTML = '<div class="empty-state"><i class="ti ti-inbox"></i><p>아직 등록된 혜택이 없어요<br>첫 번째로 문자를 올려보세요!</p></div>';
     return;
   }
-  wrap.innerHTML = items.map(function(d){
+
+  var isPopular = currentSort === 'popular';
+
+  wrap.innerHTML = items.map(function(d, idx){
     var tc = d.trust_score>=75?'th':d.trust_score>=50?'tm':'tl';
     var tl = d.trust_score>=75?'신뢰 높음':d.trust_score>=50?'신뢰 보통':'검토 중';
     var dd = calcDday(d.end_date);
-    return '<div class="bcard" data-id="'+d.id+'"><div class="bcard-top"><span class="bbadge">'+d.brand+'</span><span class="tbadge '+tc+'">'+tl+'</span></div><div class="bcard-title">'+d.summary+(d.location&&d.location!=='전국'?' — '+d.location:'')+'</div><div class="bcard-foot"><span class="meta"><i class="ti ti-calendar"></i>~'+fmtDate(d.end_date)+'</span><span class="meta"><i class="ti ti-users"></i>'+(d.submit_count||1)+'명</span>'+(dd!==null?'<span class="dday">D-'+dd+'</span>':'')+'</div></div>';
+    var rankBadge = '';
+    var rankClass = '';
+    if(isPopular && idx < 3) {
+      var rClass = idx===0?'r1':idx===1?'r2':'r3';
+      rankBadge = '<div class="rank-badge '+rClass+'">'+(idx+1)+'위</div>';
+      rankClass = idx===0?' style="border-color:#EF9F27;border-width:1.5px"':'';
+    }
+    var endDate = d.end_date ? '~'+fmtDate(d.end_date) : '미확인';
+    return '<div class="bcard" data-id="'+d.id+'"'+rankClass+' style="position:relative;'+rankClass.replace(' style="','').replace('"','')+'">'+rankBadge+
+      '<div class="bcard-top"'+(rankBadge?' style="margin-top:10px"':'')+'>'+
+      '<span class="catbadge">'+(d.category||'기타')+'</span>'+
+      '<span class="tbadge '+tc+'">'+tl+'</span></div>'+
+      '<div class="bcard-title" style="font-size:14px;margin-bottom:8px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+
+      '<span class="brand-inline">'+d.brand+'</span> <span class="summary-inline">'+d.summary+'</span></div>'+
+      '<div class="bcard-foot">'+
+      '<span class="hot-count"><i class="ti ti-users"></i>'+(d.submit_count||1)+'명 제출</span>'+
+      '<span class="meta"><i class="ti ti-calendar"></i>'+endDate+'</span>'+
+      (dd!==null?'<span class="dday">D-'+dd+'</span>':'')+'</div></div>';
   }).join('');
+
   document.querySelectorAll('.bcard').forEach(function(c){
     c.addEventListener('click', function(){ openDetail(this.dataset.id); });
   });
