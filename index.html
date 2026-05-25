@@ -35,13 +35,15 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .sort-tabs{display:flex;background:#fff;border-bottom:0.5px solid rgba(0,0,0,.07);flex-shrink:0}
 .stab{flex:1;padding:10px 4px;font-size:12px;font-weight:500;color:#aaa;text-align:center;border-bottom:2px solid transparent;cursor:pointer;transition:all .12s}
 .stab.on{color:#1D9E75;border-bottom-color:#1D9E75}
-.hot-count{font-size:12px;font-weight:600;color:#D85A30;display:flex;align-items:center;gap:3px;margin-left:auto}
+.hot-count{font-size:12px;font-weight:600;color:#D85A30;display:flex;align-items:center;gap:3px}
+.view-count{font-size:12px;font-weight:500;color:#534AB7;display:flex;align-items:center;gap:3px}
+.count-wrap{display:flex;align-items:center;gap:8px}
 .tbadge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px}
 .th{background:#EAF3DE;color:#3B6D11}
 .tm{background:#FAEEDA;color:#633806}
 .tl{background:#FCEBEB;color:#A32D2D}
 .bcard-title{font-size:15px;font-weight:500;color:#111;margin-bottom:10px;line-height:1.4}
-.bcard-foot{display:flex;align-items:center;gap:12px}
+.bcard-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .meta{font-size:12px;color:#aaa;display:flex;align-items:center;gap:4px}
 .dday{font-size:12px;font-weight:700;color:#E24B4A;margin-left:auto}
 .empty-state{text-align:center;padding:60px 20px;color:#bbb}
@@ -335,17 +337,21 @@ function renderList() {
       rankBadge = '<div class="rank-badge '+rClass+'">'+(idx+1)+'위</div>';
       rankClass = idx===0?' style="border-color:#EF9F27;border-width:1.5px"':'';
     }
-    var endDate = d.end_date ? '~'+fmtDate(d.end_date) : '미확인';
+    var endDate = d.end_date ? '~'+fmtDate(d.end_date) : '기간미정';
     return '<div class="bcard" data-id="'+d.id+'"'+rankClass+' style="position:relative;'+rankClass.replace(' style="','').replace('"','')+'">'+rankBadge+
       '<div class="bcard-top"'+(rankBadge?' style="margin-top:10px"':'')+'>'+
       '<span class="catbadge">'+(d.category||'기타')+'</span>'+
       '<span class="tbadge '+tc+'">'+tl+'</span></div>'+
       '<div class="bcard-title" style="font-size:14px;margin-bottom:8px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+
       '<span class="brand-inline">'+d.brand+'</span> <span class="summary-inline">'+d.summary+'</span></div>'+
-      '<div class="bcard-foot">'+
+      '<div class="bcard-foot" style="display:flex;align-items:center;justify-content:space-between">'+
+      '<div class="count-wrap">'+
       '<span class="hot-count"><i class="ti ti-users"></i>'+(d.submit_count||1)+'명 제출</span>'+
+      '<span class="view-count"><i class="ti ti-eye"></i>'+(d.view_count||0)+'명 조회</span>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:6px">'+
       '<span class="meta"><i class="ti ti-calendar"></i>'+endDate+'</span>'+
-      (dd!==null?'<span class="dday">D-'+dd+'</span>':'')+'</div></div>';
+      (dd!==null?'<span class="dday">D-'+dd+'</span>':'<span style="min-width:32px"></span>')+'</div></div></div>';
   }).join('');
 
   document.querySelectorAll('.bcard').forEach(function(c){
@@ -356,13 +362,29 @@ function renderList() {
 function openDetail(id) {
   var d = allItems.find(function(i){ return i.id == id; });
   if(!d) return;
+
+  // 조회수 +1
+  if(db) {
+    db.rpc('increment_view_count', { p_id: d.id }).then(function(res){
+      if(!res.error) {
+        d.view_count = (d.view_count || 0) + 1;
+      }
+    });
+  }
+
   document.getElementById('detailNavTitle').textContent = d.brand;
   var tc = d.trust_score>=75?'#639922':d.trust_score>=50?'#BA7517':'#E24B4A';
   var tt = d.trust_score>=75?'#3B6D11':d.trust_score>=50?'#633806':'#A32D2D';
+  var viewCount = (d.view_count || 0) + 1;
   document.getElementById('detailBody').innerHTML =
     '<div class="brand-row"><div class="brand-ico">'+d.brand.substring(0,2)+'</div><div><div class="brand-name">'+d.brand+'</div><div class="brand-cat">'+d.category+'</div></div></div>'+
     '<div class="sms-box"><div class="sms-lbl">원문 문자</div><div class="sms-text">'+(d.raw_sms||'원문 없음')+'</div></div>'+
-    '<div class="info-grid"><div class="info-cell"><div class="info-lbl">유효기간</div><div class="info-val">~'+fmtDate(d.end_date)+'</div></div><div class="info-cell"><div class="info-lbl">적용 지역</div><div class="info-val">'+(d.location||'미확인')+'</div></div><div class="info-cell"><div class="info-lbl">카테고리</div><div class="info-val">'+d.category+'</div></div><div class="info-cell"><div class="info-lbl">제출자 수</div><div class="info-val">'+(d.submit_count||1)+'명</div></div></div>'+
+    '<div class="info-grid">'+
+    '<div class="info-cell"><div class="info-lbl">유효기간</div><div class="info-val">'+(d.end_date?'~'+fmtDate(d.end_date):'기간미정')+'</div></div>'+
+    '<div class="info-cell"><div class="info-lbl">적용 지역</div><div class="info-val">'+(d.location||'전국')+'</div></div>'+
+    '<div class="info-cell"><div class="info-lbl">제출자 수</div><div class="info-val">'+(d.submit_count||1)+'명</div></div>'+
+    '<div class="info-cell"><div class="info-lbl">조회수</div><div class="info-val">'+viewCount+'회</div></div>'+
+    '</div>'+
     '<div class="trust-wrap"><div class="trust-row"><span style="font-size:14px;color:#999">신뢰도 점수</span><span style="font-size:14px;font-weight:700;color:'+tt+'">'+d.trust_score+'점</span></div><div class="trust-bar-bg"><div class="trust-fill" style="width:'+d.trust_score+'%;background:'+tc+'"></div></div></div>'+
     '<div class="dup-row"><i class="ti ti-users" style="font-size:16px;color:#aaa"></i><span class="dup-cnt">'+(d.submit_count||1)+'명</span><span class="dup-txt">이 동일 문자를 제출했어요</span></div>';
   document.getElementById('detailScreen').classList.add('open');
