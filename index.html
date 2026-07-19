@@ -370,10 +370,15 @@ function renderLocStep1() {
   document.getElementById('locStab2').className = 'loc-stab';
   document.getElementById('locBreadcrumb').style.display = 'none';
   var cities = ['전국','앱전용','온라인','서울','경기','인천','부산','대구','광주','대전','울산','세종','강원','충북','충남','전북','전남','경북','경남','제주'];
-  document.getElementById('locChips').innerHTML = cities.map(function(c){
-    var cls = c === tempCity ? 'lchip on' : 'lchip';
-    return '<span class="'+cls+'" onclick="selectCity(''+c+'')">'+c+'</span>';
-  }).join('');
+  var html = '';
+  for(var i=0; i<cities.length; i++) {
+    var cls = cities[i] === tempCity ? 'lchip on' : 'lchip';
+    html += '<span class="'+cls+'" data-city="'+cities[i]+'">'+cities[i]+'</span>';
+  }
+  document.getElementById('locChips').innerHTML = html;
+  document.querySelectorAll('#locChips [data-city]').forEach(function(el){
+    el.addEventListener('click', function(){ selectCity(this.dataset.city); });
+  });
   updateApplyBtn();
 }
 
@@ -396,20 +401,26 @@ function renderLocStep2(city, districts) {
   var bc = document.getElementById('locBreadcrumb');
   bc.style.display = 'flex';
   bc.innerHTML = '<span style="color:#1D9E75;font-weight:500">'+city+'</span><i class="ti ti-chevron-right" style="font-size:11px" aria-hidden="true"></i><span>구/군 선택</span>';
-  var chips = '<span class="'+(tempDistrict===''?'lchip on':'lchip')+'" onclick="selectDistrict('')">전체 ('+city+')</span>';
-  chips += districts.map(function(d){
-    var cls = d === tempDistrict ? 'lchip on' : 'lchip';
-    return '<span class="'+cls+'" onclick="selectDistrict(''+d+'')">'+d+'</span>';
-  }).join('');
-  document.getElementById('locChips').innerHTML = chips;
+  var html = '<span class="'+(tempDistrict===''?'lchip on':'lchip')+'" data-district="">전체 ('+city+')</span>';
+  for(var i=0; i<districts.length; i++) {
+    var cls = districts[i] === tempDistrict ? 'lchip on' : 'lchip';
+    html += '<span class="'+cls+'" data-district="'+districts[i]+'">'+districts[i]+'</span>';
+  }
+  document.getElementById('locChips').innerHTML = html;
+  document.querySelectorAll('#locChips [data-district]').forEach(function(el){
+    el.addEventListener('click', function(){
+      tempDistrict = this.dataset.district;
+      document.querySelectorAll('#locChips .lchip').forEach(function(c){ c.classList.remove('on'); });
+      this.classList.add('on');
+      updateApplyBtn();
+    });
+  });
   updateApplyBtn();
 }
-
-function selectDistrict(district) {
-  tempDistrict = district;
-  var chips = document.querySelectorAll('.lchip');
-  chips.forEach(function(c){ c.classList.remove('on'); });
-  event.target.classList.add('on');
+function selectDistrict(el) {
+  tempDistrict = el.dataset.district;
+  document.querySelectorAll('#locChips .lchip').forEach(function(c){ c.classList.remove('on'); });
+  el.classList.add('on');
   updateApplyBtn();
 }
 
