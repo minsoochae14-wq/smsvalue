@@ -38,10 +38,11 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .hot-count{font-size:12px;font-weight:600;color:#D85A30;display:flex;align-items:center;gap:3px}
 .view-count{font-size:12px;font-weight:500;color:#534AB7;display:flex;align-items:center;gap:3px}
 .count-wrap{display:flex;align-items:center;gap:8px}
-.tbadge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px}
-.th{background:#EAF3DE;color:#3B6D11}
-.tm{background:#FAEEDA;color:#633806}
-.tl{background:#FCEBEB;color:#A32D2D}
+.tbadge{position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 50px 50px 0}
+.tbadge-txt{position:absolute;top:5px;right:-48px;font-size:9px;font-weight:700;color:#fff;white-space:nowrap;transform:rotate(45deg);width:40px;text-align:center}
+.th{border-color:transparent #3B6D11 transparent transparent}
+.tm{border-color:transparent #BA7517 transparent transparent}
+.tl{border-color:transparent #E24B4A transparent transparent}
 .bcard-title{font-size:15px;font-weight:500;color:#111;margin-bottom:10px;line-height:1.4}
 .bcard-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .meta{font-size:12px;color:#aaa;display:flex;align-items:center;gap:4px}
@@ -132,7 +133,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
     </div>
     <div class="search-wrap">
       <i class="ti ti-search"></i>
-      <input type="text" id="searchInput" placeholder="브랜드 또는 혜택 검색...">
+      <input type="text" id="searchInput" placeholder="브랜드명 검색...">
     </div>
   </div>
   <div class="sort-tabs" id="sortTabs">
@@ -144,9 +145,18 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
     <span class="chip on" data-cat="전체">전체</span>
     <span class="chip" data-cat="음료/카페">음료/카페</span>
     <span class="chip" data-cat="편의점">편의점</span>
-    <span class="chip" data-cat="배달">배달</span>
-    <span class="chip" data-cat="패션">패션</span>
-    <span class="chip" data-cat="뷰티">뷰티</span>
+    <span class="chip" data-cat="배달앱">배달앱</span>
+    <span class="chip" data-cat="외식">외식</span>
+    <span class="chip" data-cat="패션/의류">패션</span>
+    <span class="chip" data-cat="뷰티/헬스">뷰티/헬스</span>
+    <span class="chip" data-cat="마트/쇼핑">마트/쇼핑</span>
+    <span class="chip" data-cat="금융/카드">금융/카드</span>
+    <span class="chip" data-cat="통신">통신</span>
+    <span class="chip" data-cat="독서/교육">독서/교육</span>
+    <span class="chip" data-cat="여행/숙박">여행/숙박</span>
+    <span class="chip" data-cat="OTT/구독">OTT/구독</span>
+    <span class="chip" data-cat="공공/기타">공공/기타</span>
+    <span class="chip" data-cat="기타">기타</span>
   </div>
   <div class="scroll-area">
     <div class="list-wrap" id="listWrap">
@@ -307,7 +317,7 @@ function renderList() {
   var q = document.getElementById('searchInput').value.toLowerCase();
   var items = allItems.filter(function(d){
     if(currentFilter !== '전체' && d.category !== currentFilter) return false;
-    if(q && !(d.brand||'').toLowerCase().includes(q) && !(d.summary||'').toLowerCase().includes(q)) return false;
+    if(q && !(d.brand||'').toLowerCase().includes(q)) return false;
     return true;
   });
 
@@ -334,16 +344,20 @@ function renderList() {
     var tc = d.trust_score>=75?'th':d.trust_score>=50?'tm':'tl';
     var tl = d.trust_score>=75?'신뢰 높음':d.trust_score>=50?'신뢰 보통':'검토 중';
     var dd = calcDday(d.end_date);
+    var endDate = d.end_date ? '~'+fmtDate(d.end_date) : '기간미정';
+
     var rankBadge = '';
-    var rankClass = '';
+    var cardStyle = 'position:relative';
+    var topStyle = '';
     if(isPopular && idx < 3) {
       var rClass = idx===0?'r1':idx===1?'r2':'r3';
       rankBadge = '<div class="rank-badge '+rClass+'">'+(idx+1)+'위</div>';
-      rankClass = idx===0?' style="border-color:#EF9F27;border-width:1.5px"':'';
+      topStyle = ' style="margin-top:12px"';
+      if(idx===0) cardStyle += ';border:1.5px solid #EF9F27';
     }
-    var endDate = d.end_date ? '~'+fmtDate(d.end_date) : '기간미정';
-    return '<div class="bcard" data-id="'+d.id+'"'+rankClass+' style="position:relative;'+rankClass.replace(' style="','').replace('"','')+'">'+rankBadge+
-      '<div class="bcard-top"'+(rankBadge?' style="margin-top:10px"':'')+'>'+
+
+    return '<div class="bcard" data-id="'+d.id+'" style="'+cardStyle+'">'+rankBadge+
+      '<div class="bcard-top"'+topStyle+'>'+
       '<span class="catbadge">'+(d.category||'기타')+'</span>'+
       '<span class="tbadge '+tc+'">'+tl+'</span></div>'+
       '<div class="bcard-title" style="font-size:14px;margin-bottom:8px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+
@@ -355,7 +369,8 @@ function renderList() {
       '</div>'+
       '<div style="display:flex;align-items:center;gap:6px">'+
       '<span class="meta"><i class="ti ti-calendar"></i>'+endDate+'</span>'+
-      (dd!==null?'<span class="dday">D-'+dd+'</span>':'<span style="min-width:32px"></span>')+'</div></div></div>';
+      (dd!==null?'<span class="dday">D-'+dd+'</span>':'<span style="min-width:32px"></span>')+
+      '</div></div></div>';
   }).join('');
 
   document.querySelectorAll('.bcard').forEach(function(c){
