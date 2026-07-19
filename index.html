@@ -38,11 +38,11 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .hot-count{font-size:12px;font-weight:600;color:#D85A30;display:flex;align-items:center;gap:3px}
 .view-count{font-size:12px;font-weight:500;color:#534AB7;display:flex;align-items:center;gap:3px}
 .count-wrap{display:flex;align-items:center;gap:8px}
-.tbadge{position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 50px 50px 0}
-.tbadge-txt{position:absolute;top:5px;right:-48px;font-size:9px;font-weight:700;color:#fff;white-space:nowrap;transform:rotate(45deg);width:40px;text-align:center}
-.th{border-color:transparent #3B6D11 transparent transparent}
-.tm{border-color:transparent #BA7517 transparent transparent}
-.tl{border-color:transparent #E24B4A transparent transparent}
+.tbadge{position:absolute;top:10px;right:12px;font-size:10px;font-weight:600;padding:3px 8px;border-radius:10px}
+.tbadge-txt{font-size:10px;font-weight:600}
+.th{background:#D1F0E0;color:#1A7A4A}
+.tm{background:#FAEEDA;color:#7A4A00}
+.tl{background:#FFE0E0;color:#A32D2D}
 .bcard-title{font-size:15px;font-weight:500;color:#111;margin-bottom:10px;line-height:1.4}
 .bcard-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .meta{font-size:12px;color:#aaa;display:flex;align-items:center;gap:4px}
@@ -118,6 +118,24 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .tfill{height:100%;border-radius:3px}
 .submit-ok{width:100%;padding:16px;font-size:16px;font-weight:700;border-radius:16px;background:#1D9E75;color:#fff;border:none;cursor:pointer;margin-top:6px}
 .submit-ok:disabled{opacity:.35;cursor:not-allowed}
+.loc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:35;display:none}
+.loc-overlay.open{display:block}
+.loc-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--surface-2, #fff);border-radius:24px 24px 0 0;padding:20px 16px 40px;z-index:36;display:none;max-height:70vh;overflow-y:auto}
+.loc-sheet.open{display:block}
+.loc-sheet-handle{width:36px;height:4px;border-radius:2px;background:var(--border-strong,#ddd);margin:0 auto 16px}
+.loc-sheet-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.loc-sheet-title{font-size:16px;font-weight:500;color:var(--text-primary,#111)}
+.loc-reset{font-size:12px;color:var(--text-muted,#aaa);cursor:pointer}
+.loc-step-tabs{display:flex;border-bottom:0.5px solid var(--border,rgba(0,0,0,.1));margin-bottom:14px}
+.loc-stab{flex:1;padding:8px 4px;font-size:13px;font-weight:500;color:var(--text-muted,#aaa);text-align:center;border-bottom:2px solid transparent;cursor:pointer}
+.loc-stab.on{color:#1D9E75;border-bottom-color:#1D9E75}
+.loc-stab.done{color:var(--text-secondary,#666)}
+.loc-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.lchip{font-size:12px;padding:6px 12px;border-radius:20px;border:0.5px solid var(--border,rgba(0,0,0,.1));color:var(--text-secondary,#666);cursor:pointer;white-space:nowrap}
+.lchip.on{background:#E1F5EE;color:#085041;border-color:#5DCAA5;font-weight:500}
+.loc-apply{width:100%;padding:13px;font-size:14px;font-weight:500;border-radius:14px;background:#1D9E75;color:#fff;border:none;cursor:pointer}
+.loc-tab{display:flex;align-items:center;gap:3px;padding:7px 8px;font-size:12px;font-weight:500;color:#1D9E75;white-space:nowrap;cursor:pointer;flex-shrink:0}
+.loc-tab i{font-size:14px}
 .toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#111;color:#fff;font-size:14px;padding:12px 20px;border-radius:12px;z-index:200;display:none;white-space:nowrap}
 .toast.show{display:block}
 </style>
@@ -136,10 +154,11 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
       <input type="text" id="searchInput" placeholder="브랜드명 검색...">
     </div>
   </div>
-  <div class="sort-tabs" id="sortTabs">
+  <div class="sort-tabs" id="sortTabs" style="display:flex;align-items:center">
     <div class="stab on" data-sort="latest">최신순</div>
     <div class="stab" data-sort="popular">인기순</div>
     <div class="stab" data-sort="deadline">마감임박</div>
+    <div class="loc-tab" id="locTabBtn"><i class="ti ti-map-pin" aria-hidden="true"></i><span id="locLabel">전국</span></div>
   </div>
   <div class="filter-row" id="filterRow">
     <span class="chip on" data-cat="전체">전체</span>
@@ -185,6 +204,22 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
   </div>
 </div>
 
+<div class="loc-overlay" id="locOverlay"></div>
+<div class="loc-sheet" id="locSheet">
+  <div class="loc-sheet-handle"></div>
+  <div class="loc-sheet-header">
+    <div class="loc-sheet-title">지역 선택</div>
+    <div class="loc-reset" id="locReset">초기화</div>
+  </div>
+  <div class="loc-step-tabs">
+    <div class="loc-stab on" id="locStab1">시/도</div>
+    <div class="loc-stab" id="locStab2">구/군</div>
+  </div>
+  <div id="locBreadcrumb" style="display:none;font-size:11px;color:var(--text-muted);margin-bottom:10px;display:flex;align-items:center;gap:4px"></div>
+  <div class="loc-chips" id="locChips"></div>
+  <button class="loc-apply" id="locApply">적용하기</button>
+</div>
+
 <div class="overlay" id="overlay"></div>
 <div class="sheet-body" id="sheetBody">
   <div class="sheet-handle"></div>
@@ -214,8 +249,33 @@ var db = null;
 var allItems = [];
 var currentFilter = '전체';
 var currentSort = 'latest';
+var currentCity = '전국';
+var currentDistrict = '';
 var aiResult = null;
 var aiTimer = null;
+
+var LOCATION_DATA = {
+  '전국': [],
+  '앱전용': [],
+  '온라인': [],
+  '서울': ['강남구','강동구','강북구','강서구','관악구','광진구','구로구','금천구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
+  '경기': ['수원시','성남시','의정부시','안양시','부천시','광명시','평택시','동두천시','안산시','고양시','과천시','구리시','남양주시','오산시','시흥시','군포시','의왕시','하남시','용인시','파주시','이천시','안성시','김포시','화성시','광주시','양주시','포천시','여주시'],
+  '인천': ['중구','동구','미추홀구','연수구','남동구','부평구','계양구','서구','강화군','옹진군'],
+  '부산': ['중구','서구','동구','영도구','부산진구','동래구','남구','북구','해운대구','사하구','금정구','강서구','연제구','수영구','사상구','기장군'],
+  '대구': ['중구','동구','서구','남구','북구','수성구','달서구','달성군'],
+  '광주': ['동구','서구','남구','북구','광산구'],
+  '대전': ['동구','중구','서구','유성구','대덕구'],
+  '울산': ['중구','남구','동구','북구','울주군'],
+  '경남': ['창원시','진주시','통영시','사천시','김해시','밀양시','거제시','양산시'],
+  '경북': ['포항시','경주시','김천시','안동시','구미시','영주시','영천시','상주시','문경시','경산시'],
+  '전남': ['목포시','여수시','순천시','나주시','광양시'],
+  '전북': ['전주시','군산시','익산시','정읍시','남원시','김제시'],
+  '충남': ['천안시','공주시','보령시','아산시','서산시','논산시','계룡시','당진시'],
+  '충북': ['청주시','충주시','제천시'],
+  '강원': ['춘천시','원주시','강릉시','동해시','태백시','속초시','삼척시'],
+  '세종': [],
+  '제주': ['제주시','서귀포시']
+};
 
 var MOCK = [
   {id:1,brand:'스타벅스',category:'음료/카페',summary:'아메리카노 1+1',raw_sms:'[스타벅스] 강남점 아메리카노 1+1 이벤트. ~6/30 앱 쿠폰 제시.',end_date:'2025-06-30',location:'강남점',trust_score:87,status:'approved',submit_count:12,created_at:new Date().toISOString()},
@@ -256,6 +316,14 @@ function init() {
   document.getElementById('searchInput').addEventListener('input', function(){ renderList(); });
 
   // 정렬 탭
+  document.getElementById('locTabBtn').addEventListener('click', openLocSheet);
+  document.getElementById('locOverlay').addEventListener('click', closeLocSheet);
+  document.getElementById('locReset').addEventListener('click', resetLocation);
+  document.getElementById('locApply').addEventListener('click', applyLocation);
+  document.getElementById('locStab1').addEventListener('click', function(){
+    if(locStep === 2) renderLocStep1();
+  });
+
   document.getElementById('sortTabs').addEventListener('click', function(e){
     var tab = e.target.closest('.stab');
     if(!tab) return;
@@ -275,6 +343,94 @@ function init() {
   });
 
   loadData();
+}
+
+// 지역 필터 로직
+var locStep = 1;
+var tempCity = '';
+var tempDistrict = '';
+
+function openLocSheet() {
+  locStep = 1;
+  tempCity = currentCity;
+  tempDistrict = currentDistrict;
+  renderLocStep1();
+  document.getElementById('locOverlay').classList.add('open');
+  document.getElementById('locSheet').classList.add('open');
+}
+
+function closeLocSheet() {
+  document.getElementById('locOverlay').classList.remove('open');
+  document.getElementById('locSheet').classList.remove('open');
+}
+
+function renderLocStep1() {
+  locStep = 1;
+  document.getElementById('locStab1').className = 'loc-stab on';
+  document.getElementById('locStab2').className = 'loc-stab';
+  document.getElementById('locBreadcrumb').style.display = 'none';
+  var cities = ['전국','앱전용','온라인','서울','경기','인천','부산','대구','광주','대전','울산','세종','강원','충북','충남','전북','전남','경북','경남','제주'];
+  document.getElementById('locChips').innerHTML = cities.map(function(c){
+    var cls = c === tempCity ? 'lchip on' : 'lchip';
+    return '<span class="'+cls+'" onclick="selectCity(''+c+'')">'+c+'</span>';
+  }).join('');
+  updateApplyBtn();
+}
+
+function selectCity(city) {
+  tempCity = city;
+  tempDistrict = '';
+  var districts = LOCATION_DATA[city] || [];
+  if(districts.length > 0) {
+    renderLocStep2(city, districts);
+  } else {
+    renderLocStep1();
+    updateApplyBtn();
+  }
+}
+
+function renderLocStep2(city, districts) {
+  locStep = 2;
+  document.getElementById('locStab1').className = 'loc-stab done';
+  document.getElementById('locStab2').className = 'loc-stab on';
+  var bc = document.getElementById('locBreadcrumb');
+  bc.style.display = 'flex';
+  bc.innerHTML = '<span style="color:#1D9E75;font-weight:500">'+city+'</span><i class="ti ti-chevron-right" style="font-size:11px" aria-hidden="true"></i><span>구/군 선택</span>';
+  var chips = '<span class="'+(tempDistrict===''?'lchip on':'lchip')+'" onclick="selectDistrict('')">전체 ('+city+')</span>';
+  chips += districts.map(function(d){
+    var cls = d === tempDistrict ? 'lchip on' : 'lchip';
+    return '<span class="'+cls+'" onclick="selectDistrict(''+d+'')">'+d+'</span>';
+  }).join('');
+  document.getElementById('locChips').innerHTML = chips;
+  updateApplyBtn();
+}
+
+function selectDistrict(district) {
+  tempDistrict = district;
+  var chips = document.querySelectorAll('.lchip');
+  chips.forEach(function(c){ c.classList.remove('on'); });
+  event.target.classList.add('on');
+  updateApplyBtn();
+}
+
+function updateApplyBtn() {
+  var label = tempDistrict || tempCity || '전국';
+  document.getElementById('locApply').textContent = label + ' 적용하기';
+}
+
+function applyLocation() {
+  currentCity = tempCity;
+  currentDistrict = tempDistrict;
+  var label = currentDistrict || currentCity || '전국';
+  document.getElementById('locLabel').textContent = label;
+  closeLocSheet();
+  renderList();
+}
+
+function resetLocation() {
+  tempCity = '전국';
+  tempDistrict = '';
+  renderLocStep1();
 }
 
 function loadData() {
@@ -318,6 +474,19 @@ function renderList() {
   var items = allItems.filter(function(d){
     if(currentFilter !== '전체' && d.category !== currentFilter) return false;
     if(q && !(d.brand||'').toLowerCase().includes(q)) return false;
+    // 지역 필터
+    if(currentCity && currentCity !== '전국') {
+      var loc = (d.location || '').toLowerCase();
+      if(currentDistrict) {
+        if(!loc.includes(currentDistrict.toLowerCase())) return false;
+      } else if(currentCity === '앱전용') {
+        if(!loc.includes('앱')) return false;
+      } else if(currentCity === '온라인') {
+        if(!loc.includes('온라인')) return false;
+      } else {
+        if(!loc.includes(currentCity.toLowerCase()) && loc !== '전국') return false;
+      }
+    }
     return true;
   });
 
