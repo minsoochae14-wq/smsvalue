@@ -120,7 +120,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .submit-ok:disabled{opacity:.35;cursor:not-allowed}
 .loc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:35;display:none}
 .loc-overlay.open{display:block}
-.loc-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--surface-2, #fff);border-radius:24px 24px 0 0;padding:20px 16px 40px;z-index:36;display:none;max-height:70vh;overflow-y:auto}
+.loc-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--surface-2, #fff);border-radius:24px 24px 0 0;padding:20px 16px 90px;z-index:36;display:none;max-height:80vh;overflow-y:auto}
 .loc-sheet.open{display:block}
 .loc-sheet-handle{width:36px;height:4px;border-radius:2px;background:var(--border-strong,#ddd);margin:0 auto 16px}
 .loc-sheet-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
@@ -144,7 +144,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 <div class="app">
   <div class="topbar">
     <div class="topbar-row">
-      <div class="logo">문자<span>혜택</span></div>
+      <div class="logo">문자혜택을 <span>올려주세요</span></div>
       <div style="width:34px;height:34px;border-radius:50%;background:#f5f5f0;border:0.5px solid rgba(0,0,0,.08);display:flex;align-items:center;justify-content:center">
         <i class="ti ti-bell" style="font-size:18px;color:#bbb"></i>
       </div>
@@ -1053,10 +1053,10 @@ function onSubmitDone() {
   var btn = document.getElementById('submitOk');
   btn.textContent = '제출 완료! 리스트에 추가됐어요';
   btn.style.background = '#085041';
-  renderList();
   setTimeout(function(){
     closeSheet();
     showToast('혜택이 등록됐어요!');
+    fetchData();
   }, 1000);
 }
 
