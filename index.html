@@ -10,6 +10,8 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f0ec}
 .app{width:100%;max-width:430px;margin:0 auto;min-height:100vh;background:#f0f0ec;display:flex;flex-direction:column}
+.notice-banner{background:#FFF8E1;border-bottom:0.5px solid rgba(0,0,0,.05);padding:8px 16px;font-size:12px;color:#8A6D1A;text-align:center;line-height:1.5}
+.notice-banner b{color:#5C4708;font-weight:600}
 .topbar{background:#fff;border-bottom:0.5px solid rgba(0,0,0,.07);padding:52px 16px 10px}
 .topbar-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .logo{font-size:18px;font-weight:700;color:#111}
@@ -142,7 +144,8 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 </head>
 <body>
 <div class="app">
-  <div class="topbar">
+  <div class="notice-banner" id="noticeBanner">검증은 여러분의 몫... 대신 <b id="totalViews">0</b>명이 같이 봤어요</div>
+  <div class="topbar" style="padding-top:14px">
     <div class="topbar-row">
       <div class="logo">문자혜택을 <span>올려주세요</span></div>
       <div style="width:34px;height:34px;border-radius:50%;background:#f5f5f0;border:0.5px solid rgba(0,0,0,.08);display:flex;align-items:center;justify-content:center">
@@ -472,6 +475,11 @@ function fetchData() {
       if(res.data) {
         allItems = res.data;
         renderList();
+        // 전체 조회수 합계를 배너에 표시
+        var totalV = 0;
+        for(var i=0; i<allItems.length; i++) totalV += (allItems[i].view_count || 0);
+        var tv = document.getElementById('totalViews');
+        if(tv) tv.textContent = totalV.toLocaleString();
       }
     })
     .catch(function(e){
