@@ -108,6 +108,11 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .trust-fill{height:100%;border-radius:4px}
 .dup-row{display:flex;align-items:center;gap:8px;padding:12px 14px;background:#f5f5f0;border-radius:12px;margin-bottom:20px}
 .links-box{margin-bottom:20px}
+.save-btn{display:flex;align-items:center;justify-content:center;width:30px;height:30px;margin:-6px -6px -6px 0;border:none;background:transparent;border-radius:50%;cursor:pointer;flex-shrink:0}
+.save-btn i{font-size:19px;color:#ccc;pointer-events:none}
+.save-btn.on i{color:#EF9F27}
+.save-btn:active{background:#f0f0ec}
+.app.view-saved .search-wrap,.app.view-saved #sortTabs,.app.view-saved #filterRow{display:none!important}
 .links-head{display:flex;align-items:baseline;gap:6px;margin-bottom:8px}
 .links-title{font-size:14px;font-weight:700;color:#111}
 .links-cnt{font-size:13px;font-weight:700;color:#1D9E75}
@@ -213,10 +218,10 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
   </div>
   <button class="fab" id="fabBtn"><i class="ti ti-plus"></i></button>
   <div class="bottom-nav">
-    <div class="nav-item on"><i class="ti ti-home"></i><span>홈</span></div>
+    <div class="nav-item on" id="navHome"><i class="ti ti-home"></i><span>홈</span></div>
     <div class="nav-item"><i class="ti ti-search"></i><span>탐색</span></div>
     <div class="nav-item" id="navSubmit"><i class="ti ti-circle-plus"></i><span>올리기</span></div>
-    <div class="nav-item"><i class="ti ti-star"></i><span>저장</span></div>
+    <div class="nav-item" id="navSaved"><i class="ti ti-star"></i><span>저장</span></div>
     <div class="nav-item"><i class="ti ti-user"></i><span>마이</span></div>
   </div>
 </div>
@@ -344,6 +349,8 @@ function init() {
   document.getElementById('smsTA').addEventListener('input', onInput);
   document.getElementById('submitOk').addEventListener('click', doSubmit);
   document.getElementById('searchInput').addEventListener('input', function(){ renderList(); });
+  document.getElementById('navHome').addEventListener('click', function(){ setView('home'); });
+  document.getElementById('navSaved').addEventListener('click', function(){ setView('saved'); });
 
   // 정렬 탭
   document.getElementById('locTabBtn').addEventListener('click', openLocSheet);
@@ -516,6 +523,7 @@ function fetchData() {
 }
 
 function renderList() {
+  if(currentView === 'saved') { renderSaved(); return; }
   var q = document.getElementById('searchInput').value.toLowerCase();
   var items = allItems.filter(function(d){
     if(q && !(d.brand||'').toLowerCase().includes(q)) return false;
@@ -581,11 +589,150 @@ function renderList() {
   }
   wrap.innerHTML = html;
 
-  document.querySelectorAll('.bcard').forEach(function(c){
-    c.addEventListener('click', function(){ openDetail(this.dataset.id); });
-  });
+  bindCards(wrap);
   var tg = document.getElementById('expToggle');
   if(tg) tg.addEventListener('click', function(){ showExpired = !showExpired; renderList(); });
+}
+
+function bindCards(root) {
+  root.querySelectorAll('.bcard').forEach(function(c){
+    c.addEventListener('click', function(){ openDetail(this.dataset.id); });
+  });
+  root.querySelectorAll('.save-btn').forEach(function(b){
+    b.addEventListener('click', function(e){
+      e.stopPropagation();
+      toggleSaved(this.dataset.id);
+    });
+  });
+}
+
+// ---- 저장(★) — 이 브라우저의 localStorage에 id만 보관
+var SAVED_KEY = 'smsvalue_saved_ids';
+var currentView = 'home';
+var savedItems = [];
+var savedLoading = false;
+var storageOk = (function(){
+  try {
+    var k = '__smsvalue_test__';
+    window.localStorage.setItem(k, '1');
+    window.localStorage.removeItem(k);
+    return true;
+  } catch(e) {
+    return false;
+  }
+})();
+
+function getSavedIds() {
+  if(!storageOk) return [];
+  try {
+    var arr = JSON.parse(window.localStorage.getItem(SAVED_KEY) || '[]');
+    if(!Array.isArray(arr)) return [];
+    return arr.filter(function(v){ return /^\d+$/.test(String(v)); }).map(String);
+  } catch(e) {
+    return [];
+  }
+}
+
+function setSavedIds(ids) {
+  try {
+    window.localStorage.setItem(SAVED_KEY, JSON.stringify(ids));
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+function isSaved(id) {
+  return getSavedIds().indexOf(String(id)) >= 0;
+}
+
+function saveBtnHtml(id) {
+  var on = isSaved(id);
+  return '<button class="save-btn'+(on?' on':'')+'" data-id="'+esc(id)+'" aria-label="'+(on?'저장 해제':'저장')+'">'+
+    '<i class="ti '+(on?'ti-star-filled':'ti-star')+'"></i></button>';
+}
+
+function toggleSaved(id) {
+  if(!storageOk) { showToast('이 브라우저에서는 저장이 안 돼요'); return; }
+  id = String(id);
+  var ids = getSavedIds();
+  var i = ids.indexOf(id);
+  var on = i < 0;
+  if(on) ids.unshift(id); else ids.splice(i, 1);
+  if(!setSavedIds(ids)) { showToast('이 브라우저에서는 저장이 안 돼요'); return; }
+  document.querySelectorAll('.save-btn[data-id="'+id+'"]').forEach(function(b){
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-label', on ? '저장 해제' : '저장');
+    b.querySelector('i').className = 'ti ' + (on ? 'ti-star-filled' : 'ti-star');
+  });
+  showToast(on ? '저장했어요' : '저장을 해제했어요');
+  if(currentView === 'saved' && !on) renderSaved();
+}
+
+function setView(v) {
+  currentView = v;
+  document.querySelector('.app').classList.toggle('view-saved', v === 'saved');
+  document.getElementById('navHome').classList.toggle('on', v === 'home');
+  document.getElementById('navSaved').classList.toggle('on', v === 'saved');
+  document.querySelector('.scroll-area').scrollTop = 0;
+  if(v === 'saved') loadSaved(); else renderList();
+}
+
+function loadSaved() {
+  var wrap = document.getElementById('listWrap');
+  if(!storageOk) { renderSaved(); return; }
+  var ids = getSavedIds();
+  if(!ids.length || !db) { savedItems = []; renderSaved(); return; }
+  savedLoading = true;
+  renderSaved();
+  db.from('sms_benefits')
+    .select('*')
+    .in('id', ids)
+    .eq('status','approved')
+    .then(function(res){
+      savedLoading = false;
+      if(currentView !== 'saved') return;
+      if(res.error) {
+        console.error('저장 목록 오류:', res.error);
+        wrap.innerHTML = '<div class="empty-state"><i class="ti ti-alert-circle"></i><p>저장한 혜택을 불러오지 못했어요<br>잠시 후 다시 시도해주세요</p></div>';
+        return;
+      }
+      savedItems = res.data || [];
+      renderSaved();
+    })
+    .catch(function(e){
+      savedLoading = false;
+      console.error('네트워크 오류:', e);
+      if(currentView !== 'saved') return;
+      wrap.innerHTML = '<div class="empty-state"><i class="ti ti-wifi-off"></i><p>네트워크 오류<br>인터넷 연결을 확인해주세요</p></div>';
+    });
+}
+
+function renderSaved() {
+  var wrap = document.getElementById('listWrap');
+  if(!storageOk) {
+    wrap.innerHTML = '<div class="empty-state"><i class="ti ti-star-off"></i><p>이 브라우저에서는 저장이 안 돼요<br>사생활 보호 모드라면 일반 모드에서 열어주세요</p></div>';
+    return;
+  }
+  if(savedLoading) {
+    wrap.innerHTML = '<div class="empty-state"><i class="ti ti-loader"></i><p>불러오는 중...</p></div>';
+    return;
+  }
+  // 저장한 순서(최근 저장 먼저)대로, 조회되지 않은 id는 조용히 제외
+  var ids = getSavedIds();
+  var byId = {};
+  savedItems.forEach(function(d){ byId[String(d.id)] = d; });
+  var items = ids.map(function(id){ return byId[id]; }).filter(Boolean);
+  if(!items.length) {
+    wrap.innerHTML = '<div class="empty-state"><i class="ti ti-star"></i><p>저장한 혜택이 없어요<br>카드의 ☆를 눌러 저장해 보세요</p></div>';
+    return;
+  }
+  var active = items.filter(function(d){ return !isExpired(d.end_date); });
+  var expired = items.filter(function(d){ return isExpired(d.end_date); });
+  var html = secHead('저장한 혜택', items.length, '최근 저장 순') +
+    active.concat(expired).map(function(d){ return cardHtml(d, -1); }).join('');
+  wrap.innerHTML = html;
+  bindCards(wrap);
 }
 
 function secHead(title, cnt, sub, cls) {
@@ -634,6 +781,7 @@ function cardHtml(d, rankIdx) {
     '</div>'+
     '<div style="display:flex;align-items:center;gap:6px">'+
     '<span class="meta"><i class="ti ti-calendar"></i>'+endDate+'</span>'+ddHtml+
+    saveBtnHtml(d.id)+
     '</div></div></div>';
 }
 
@@ -713,7 +861,7 @@ function fmtWon(n) {
 }
 
 function openDetail(id) {
-  var d = allItems.find(function(i){ return i.id == id; });
+  var d = allItems.find(function(i){ return i.id == id; }) || savedItems.find(function(i){ return i.id == id; });
   if(!d) return;
 
   // 조회수 +1
