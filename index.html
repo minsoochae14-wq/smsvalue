@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>문자혜택</title>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="문자혜택">
@@ -14,11 +14,12 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.10.0/dist/tabler-icons.min.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f0ec}
-.app{width:100%;max-width:430px;margin:0 auto;min-height:100vh;background:#f0f0ec;display:flex;flex-direction:column}
+:root{--bg:#F2F4F6;--card:#fff;--card-line:transparent;--card-shadow:0 1px 2px rgba(16,24,40,.04),0 2px 8px rgba(16,24,40,.06);--fill:#F2F4F6;--fill-soft:#F5F6F8;--tag:#EEF0F3;--tag-text:#8B95A1;--paste:#F9FAFB}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg)}
+.app{width:100%;max-width:430px;margin:0 auto;min-height:100vh;background:var(--bg);display:flex;flex-direction:column}
 .notice-banner{background:#FFF8E1;border-bottom:0.5px solid rgba(0,0,0,.05);padding:8px 16px;font-size:12px;color:#8A6D1A;text-align:center;line-height:1.5}
 .notice-banner b{color:#5C4708;font-weight:600}
 .topbar{background:#fff;border-bottom:0.5px solid rgba(0,0,0,.07);padding:52px 16px 10px}
@@ -26,7 +27,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .logo{font-size:18px;font-weight:700;color:#111}
 .logo span{color:#1D9E75}
 .search-wrap{position:relative}
-.search-wrap input{width:100%;padding:10px 14px 10px 36px;font-size:14px;border:0.5px solid rgba(0,0,0,.1);border-radius:24px;background:#f5f5f0;color:#111;outline:none}
+.search-wrap input{width:100%;padding:10px 14px 10px 36px;font-size:16px;border:0.5px solid rgba(0,0,0,.1);border-radius:24px;background:var(--fill-soft);color:#111;outline:none}
 .search-wrap input::placeholder{color:#bbb}
 .search-wrap i{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:16px;color:#bbb}
 .filter-row{display:flex;gap:6px;padding:10px 16px;overflow-x:auto;background:#fff;border-bottom:0.5px solid rgba(0,0,0,.06)}
@@ -35,12 +36,12 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .chip.on{background:#E1F5EE;color:#085041;border-color:#5DCAA5}
 .scroll-area{flex:1;overflow-y:auto;padding-bottom:90px}
 .list-wrap{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
-.bcard{background:#fff;border:0.5px solid rgba(0,0,0,.08);border-radius:16px;padding:16px;cursor:pointer}
+.bcard{background:var(--card);border:0.5px solid var(--card-line);box-shadow:var(--card-shadow);border-radius:16px;padding:16px;cursor:pointer}
 .bcard-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .bbadge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;background:#E1F5EE;color:#085041}
-.catbadge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;background:#f0f0ec;color:#5F5E5A}
+.catbadge{font-size:11px;font-weight:600;padding:4px 9px;border-radius:20px;background:var(--fill);color:#4E5968}
 .rank-badge{position:absolute;top:-1px;left:12px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:0 0 6px 6px}
-.r1{background:#FAEEDA;color:#633806}.r2{background:#F1EFE8;color:#444441}.r3{background:#FAECE7;color:#712B13}
+.r1{background:#FAEEDA;color:#633806}.r2{background:#EEF0F3;color:#4E5968}.r3{background:#FAECE7;color:#712B13}
 .brand-inline{font-weight:600;color:#111}
 .summary-inline{color:#666;font-weight:400}
 .sort-tabs{display:flex;background:#fff;border-bottom:0.5px solid rgba(0,0,0,.07);flex-shrink:0}
@@ -70,7 +71,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .perk.won{background:#E1F5EE;color:#0B6B4D}
 .perk.plus{background:#FCE7F3;color:#A21C5B}
 .perk.free{background:#E6F0FD;color:#1D4ED8}
-.perk.none{background:#f0f0ec;color:#aaa}
+.perk.none{background:var(--fill);color:#aaa}
 .sec-head{display:flex;align-items:baseline;gap:6px;margin:6px 2px 0}
 .sec-head:first-child{margin-top:0}
 .sec-title{font-size:15px;font-weight:700;color:#111}
@@ -82,7 +83,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .chip .cnt{margin-left:4px;font-weight:700;opacity:.6}
 .list-note{text-align:center;font-size:13px;color:#aaa;padding:14px 0 4px;line-height:1.6}
 .ended{font-size:12px;font-weight:700;color:#999;margin-left:auto}
-.nodate-tag{font-size:11px;font-weight:600;padding:3px 8px;border-radius:10px;background:#EDEDE8;color:#8A8A85}
+.nodate-tag{font-size:11px;font-weight:600;padding:3px 8px;border-radius:10px;background:var(--tag);color:var(--tag-text)}
 .sec-head.nodate .sec-cnt{color:#999}
 .empty-state{text-align:center;padding:60px 20px;color:#bbb}
 .empty-state i{font-size:40px;margin-bottom:12px;display:block}
@@ -99,36 +100,36 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .detail-screen{position:fixed;top:0;left:50%;transform:translateX(-50%) translateX(100%);width:100%;max-width:430px;height:100vh;background:#fff;transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:60;display:flex;flex-direction:column}
 .detail-screen.open{transform:translateX(-50%) translateX(0)}
 .detail-nav{padding:52px 16px 12px;display:flex;align-items:center;gap:12px;border-bottom:0.5px solid rgba(0,0,0,.08)}
-.back-btn{width:34px;height:34px;border-radius:50%;background:#f5f5f0;border:0.5px solid rgba(0,0,0,.1);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.back-btn{width:34px;height:34px;border-radius:50%;background:var(--fill-soft);border:0.5px solid rgba(0,0,0,.1);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
 .back-btn i{pointer-events:none}
 .detail-scroll{flex:1;overflow-y:auto;padding:18px 16px 0}
 .brand-row{display:flex;align-items:center;gap:12px;margin-bottom:18px}
 .brand-ico{width:44px;height:44px;border-radius:12px;background:#E1F5EE;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#085041;flex-shrink:0}
 .brand-name{font-size:16px;font-weight:700;color:#111}
 .brand-cat{font-size:13px;color:#999;margin-top:2px}
-.sms-box{background:#f5f5f0;border-radius:14px;padding:16px;margin-bottom:16px}
+.sms-box{background:var(--fill-soft);border-radius:14px;padding:16px;margin-bottom:16px}
 .sms-lbl{font-size:11px;font-weight:700;color:#aaa;margin-bottom:8px;letter-spacing:.04em}
 .sms-text{font-size:14px;color:#111;line-height:1.7;white-space:pre-wrap;word-break:break-word}
 .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
-.info-cell{background:#f5f5f0;border-radius:12px;padding:12px}
+.info-cell{background:var(--fill-soft);border-radius:12px;padding:12px}
 .info-lbl{font-size:11px;color:#aaa;margin-bottom:4px;font-weight:500}
 .info-val{font-size:15px;font-weight:700;color:#111}
 .trust-wrap{margin-bottom:16px}
 .trust-row{display:flex;justify-content:space-between;margin-bottom:7px}
-.trust-bar-bg{height:7px;background:#f0f0ec;border-radius:4px;overflow:hidden}
+.trust-bar-bg{height:7px;background:var(--fill);border-radius:4px;overflow:hidden}
 .trust-fill{height:100%;border-radius:4px}
-.dup-row{display:flex;align-items:center;gap:8px;padding:12px 14px;background:#f5f5f0;border-radius:12px;margin-bottom:20px}
+.dup-row{display:flex;align-items:center;gap:8px;padding:12px 14px;background:var(--fill-soft);border-radius:12px;margin-bottom:20px}
 .links-box{margin-bottom:20px}
 .save-btn{display:flex;align-items:center;justify-content:center;width:30px;height:30px;margin:-6px -6px -6px 0;border:none;background:transparent;border-radius:50%;cursor:pointer;flex-shrink:0}
 .save-btn i{font-size:19px;color:#ccc;pointer-events:none}
 .save-btn.on i{color:#EF9F27}
-.save-btn:active{background:#f0f0ec}
-.app.view-saved .search-wrap,.app.view-saved #sortTabs,.app.view-saved #filterRow{display:none!important}
+.save-btn:active{background:var(--fill)}
+.app.view-list .search-wrap,.app.view-list #sortTabs,.app.view-list #filterRow{display:none!important}
 .links-head{display:flex;align-items:baseline;gap:6px;margin-bottom:8px}
 .links-title{font-size:14px;font-weight:700;color:#111}
 .links-cnt{font-size:13px;font-weight:700;color:#1D9E75}
 .link-row{display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:6px;background:#fff;border:0.5px solid rgba(0,0,0,.1);border-radius:12px;text-decoration:none;color:inherit}
-.link-row:active{background:#f5f5f0}
+.link-row:active{background:var(--fill-soft)}
 .link-row .ti-link{font-size:16px;color:#1D9E75;flex-shrink:0}
 .link-txt{flex:1;min-width:0}
 .link-host{display:block;font-size:13px;font-weight:600;color:#111}
@@ -150,11 +151,11 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .sheet-handle{width:38px;height:4px;border-radius:2px;background:#ddd;margin:0 auto 20px}
 .sheet-title{font-size:18px;font-weight:700;color:#111;margin-bottom:5px}
 .sheet-sub{font-size:14px;color:#aaa;margin-bottom:20px}
-.paste-area{width:100%;min-height:120px;border:1.5px dashed #d0d0cc;border-radius:16px;background:#fafaf8;padding:16px;margin-bottom:16px;cursor:text}
+.paste-area{width:100%;min-height:120px;border:1.5px dashed #D1D6DB;border-radius:16px;background:var(--paste);padding:16px;margin-bottom:16px;cursor:text}
 .paste-area:focus-within{border-color:#1D9E75;background:#fff}
-.paste-area textarea{width:100%;background:transparent;border:none;outline:none;font-size:15px;color:#111;line-height:1.65;resize:none;min-height:90px;font-family:inherit}
+.paste-area textarea{width:100%;background:transparent;border:none;outline:none;font-size:16px;color:#111;line-height:1.65;resize:none;min-height:90px;font-family:inherit}
 .paste-area textarea::placeholder{color:#ccc}
-.analyzing{display:none;align-items:center;gap:12px;padding:14px 16px;background:#f5f5f0;border-radius:14px;margin-bottom:16px}
+.analyzing{display:none;align-items:center;gap:12px;padding:14px 16px;background:var(--fill-soft);border-radius:14px;margin-bottom:16px}
 .analyzing.show{display:flex}
 .dot-spin{width:20px;height:20px;border:2px solid #9FE1CB;border-top-color:#1D9E75;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -168,11 +169,11 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .result-lbl{font-size:13px;color:#aaa;display:flex;align-items:center;gap:6px}
 .result-lbl i{font-size:14px;pointer-events:none}
 .result-val{font-size:14px;font-weight:600;color:#111}
-.result-divider{height:0.5px;background:#f0f0ec}
+.result-divider{height:0.5px;background:var(--fill)}
 .pii-note{display:flex;gap:6px;align-items:flex-start;margin-top:12px;padding:10px 12px;border-radius:10px;background:#E1F5EE;color:#085041;font-size:12px;line-height:1.5}
 .pii-note i{font-size:15px;margin-top:1px}
 .trust-mini{display:flex;align-items:center;gap:10px}
-.tbar{flex:1;height:6px;background:#f0f0ec;border-radius:3px;overflow:hidden}
+.tbar{flex:1;height:6px;background:var(--fill);border-radius:3px;overflow:hidden}
 .tfill{height:100%;border-radius:3px}
 .submit-ok{width:100%;padding:16px;font-size:16px;font-weight:700;border-radius:16px;background:#1D9E75;color:#fff;border:none;cursor:pointer;margin-top:6px}
 .submit-ok:disabled{opacity:.35;cursor:not-allowed}
@@ -204,9 +205,6 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
   <div class="topbar" style="padding-top:14px">
     <div class="topbar-row">
       <div class="logo">문자혜택을 <span>올려주세요</span></div>
-      <div style="width:34px;height:34px;border-radius:50%;background:#f5f5f0;border:0.5px solid rgba(0,0,0,.08);display:flex;align-items:center;justify-content:center">
-        <i class="ti ti-bell" style="font-size:18px;color:#bbb"></i>
-      </div>
     </div>
     <div class="search-wrap">
       <i class="ti ti-search"></i>
@@ -230,10 +228,10 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
   <button class="fab" id="fabBtn"><i class="ti ti-plus"></i></button>
   <div class="bottom-nav">
     <div class="nav-item on" id="navHome"><i class="ti ti-home"></i><span>홈</span></div>
-    <div class="nav-item"><i class="ti ti-search"></i><span>탐색</span></div>
+    <div class="nav-item" id="navSearch"><i class="ti ti-search"></i><span>탐색</span></div>
     <div class="nav-item" id="navSubmit"><i class="ti ti-circle-plus"></i><span>올리기</span></div>
     <div class="nav-item" id="navSaved"><i class="ti ti-star"></i><span>저장</span></div>
-    <div class="nav-item"><i class="ti ti-user"></i><span>마이</span></div>
+    <div class="nav-item" id="navMine"><i class="ti ti-user"></i><span>마이</span></div>
   </div>
 </div>
 
@@ -362,6 +360,12 @@ function init() {
   document.getElementById('searchInput').addEventListener('input', function(){ renderList(); });
   document.getElementById('navHome').addEventListener('click', function(){ setView('home'); });
   document.getElementById('navSaved').addEventListener('click', function(){ setView('saved'); });
+  document.getElementById('navMine').addEventListener('click', function(){ setView('mine'); });
+  document.getElementById('navSearch').addEventListener('click', function(){
+    setView('home');
+    var si = document.getElementById('searchInput');
+    si.focus();
+  });
 
   // 정렬 탭
   document.getElementById('locTabBtn').addEventListener('click', openLocSheet);
@@ -520,6 +524,7 @@ function fetchData() {
       if(res.data) {
         allItems = res.data;
         renderList();
+        openDeepLink();
         // 전체 조회수 합계를 배너에 표시
         var totalV = 0;
         for(var i=0; i<allItems.length; i++) totalV += (allItems[i].view_count || 0);
@@ -534,7 +539,7 @@ function fetchData() {
 }
 
 function renderList() {
-  if(currentView === 'saved') { renderSaved(); return; }
+  if(currentView !== 'home') { renderSaved(); return; }
   var q = document.getElementById('searchInput').value.toLowerCase();
   var items = allItems.filter(function(d){
     if(q && !(d.brand||'').toLowerCase().includes(q)) return false;
@@ -566,7 +571,7 @@ function renderList() {
     items = items.slice().sort(function(a,b){
       if(!hasEndDate(a)) return hasEndDate(b) ? 1 : 0;
       if(!hasEndDate(b)) return -1;
-      return new Date(a.end_date)-new Date(b.end_date);
+      return parseLocalDate(a.end_date)-parseLocalDate(b.end_date);
     });
   }
   // 진행 중 = 마감일이 있고 아직 안 지난 것 / 기간 미정 = 마감일 없음 / 마감 = 지난 것
@@ -584,7 +589,7 @@ function renderList() {
   if(currentSort === 'latest') {
     // 7일 안에 끝나는 혜택은 따로 묶어서 맨 위에
     var soon = ongoing.filter(function(d){ var dd = calcDday(d.end_date); return dd !== null && dd <= 7; })
-      .sort(function(a,b){ return new Date(a.end_date)-new Date(b.end_date); });
+      .sort(function(a,b){ return parseLocalDate(a.end_date)-parseLocalDate(b.end_date); });
     var rest = ongoing.filter(function(d){ return soon.indexOf(d) < 0; });
     if(soon.length) html += secHead('🔥 곧 마감', soon.length, '7일 안에 끝나요', 'hot') + soon.map(function(d){ return cardHtml(d, -1); }).join('');
     if(rest.length) html += secHead('진행 중', rest.length, '최신순') + rest.map(function(d){ return cardHtml(d, -1); }).join('');
@@ -625,6 +630,7 @@ function bindCards(root) {
 
 // ---- 저장(★) — 이 브라우저의 localStorage에 id만 보관
 var SAVED_KEY = 'smsvalue_saved_ids';
+var MY_KEY = 'smsvalue_my_ids';  // 이 브라우저에서 올린 글
 var currentView = 'home';
 var savedItems = [];
 var savedLoading = false;
@@ -640,9 +646,13 @@ var storageOk = (function(){
 })();
 
 function getSavedIds() {
+  return getIds(SAVED_KEY);
+}
+
+function getIds(key) {
   if(!storageOk) return [];
   try {
-    var arr = JSON.parse(window.localStorage.getItem(SAVED_KEY) || '[]');
+    var arr = JSON.parse(window.localStorage.getItem(key) || '[]');
     if(!Array.isArray(arr)) return [];
     return arr.filter(function(v){ return /^\d+$/.test(String(v)); }).map(String);
   } catch(e) {
@@ -651,8 +661,12 @@ function getSavedIds() {
 }
 
 function setSavedIds(ids) {
+  return setIds(SAVED_KEY, ids);
+}
+
+function setIds(key, ids) {
   try {
-    window.localStorage.setItem(SAVED_KEY, JSON.stringify(ids));
+    window.localStorage.setItem(key, JSON.stringify(ids));
     return true;
   } catch(e) {
     return false;
@@ -686,19 +700,33 @@ function toggleSaved(id) {
   if(currentView === 'saved' && !on) renderSaved();
 }
 
+// 내가 올린 글 기록 (제출 성공 시)
+function rememberMine(id) {
+  if(!storageOk || !/^\d+$/.test(String(id))) return;
+  var ids = getIds(MY_KEY).filter(function(x){ return x !== String(id); });
+  ids.unshift(String(id));
+  setIds(MY_KEY, ids.slice(0, 200));
+}
+
+function viewKey() {
+  return currentView === 'mine' ? MY_KEY : SAVED_KEY;
+}
+
 function setView(v) {
   currentView = v;
-  document.querySelector('.app').classList.toggle('view-saved', v === 'saved');
+  document.querySelector('.app').classList.toggle('view-list', v !== 'home');
   document.getElementById('navHome').classList.toggle('on', v === 'home');
   document.getElementById('navSaved').classList.toggle('on', v === 'saved');
+  document.getElementById('navMine').classList.toggle('on', v === 'mine');
   document.querySelector('.scroll-area').scrollTop = 0;
-  if(v === 'saved') loadSaved(); else renderList();
+  if(v === 'home') renderList(); else loadSaved();
 }
 
 function loadSaved() {
   var wrap = document.getElementById('listWrap');
   if(!storageOk) { renderSaved(); return; }
-  var ids = getSavedIds();
+  var ids = getIds(viewKey());
+  var view = currentView;
   if(!ids.length || !db) { savedItems = []; renderSaved(); return; }
   savedLoading = true;
   renderSaved();
@@ -708,10 +736,10 @@ function loadSaved() {
     .eq('status','approved')
     .then(function(res){
       savedLoading = false;
-      if(currentView !== 'saved') return;
+      if(currentView !== view) return;
       if(res.error) {
-        console.error('저장 목록 오류:', res.error);
-        wrap.innerHTML = '<div class="empty-state"><i class="ti ti-alert-circle"></i><p>저장한 혜택을 불러오지 못했어요<br>잠시 후 다시 시도해주세요</p></div>';
+        console.error('목록 오류:', res.error);
+        wrap.innerHTML = '<div class="empty-state"><i class="ti ti-alert-circle"></i><p>목록을 불러오지 못했어요<br>잠시 후 다시 시도해주세요</p></div>';
         return;
       }
       savedItems = res.data || [];
@@ -720,13 +748,14 @@ function loadSaved() {
     .catch(function(e){
       savedLoading = false;
       console.error('네트워크 오류:', e);
-      if(currentView !== 'saved') return;
+      if(currentView !== view) return;
       wrap.innerHTML = '<div class="empty-state"><i class="ti ti-wifi-off"></i><p>네트워크 오류<br>인터넷 연결을 확인해주세요</p></div>';
     });
 }
 
 function renderSaved() {
   var wrap = document.getElementById('listWrap');
+  var mine = currentView === 'mine';
   if(!storageOk) {
     wrap.innerHTML = '<div class="empty-state"><i class="ti ti-star-off"></i><p>이 브라우저에서는 저장이 안 돼요<br>사생활 보호 모드라면 일반 모드에서 열어주세요</p></div>';
     return;
@@ -735,20 +764,25 @@ function renderSaved() {
     wrap.innerHTML = '<div class="empty-state"><i class="ti ti-loader"></i><p>불러오는 중...</p></div>';
     return;
   }
-  // 저장한 순서(최근 저장 먼저)대로, 조회되지 않은 id는 조용히 제외
-  var ids = getSavedIds();
+  // 저장한(올린) 순서대로, 조회되지 않은 id는 목록에서 제외
+  var ids = getIds(viewKey());
   var byId = {};
   savedItems.forEach(function(d){ byId[String(d.id)] = d; });
   var items = ids.map(function(id){ return byId[id]; }).filter(Boolean);
+  // 내가 올린 글 중 검토 대기·삭제로 안 보이는 개수는 알려줌
+  var hiddenNote = mine && ids.length > items.length
+    ? '<div class="list-note">확인 중이거나 삭제된 글 '+(ids.length - items.length)+'개는 보이지 않아요</div>' : '';
   if(!items.length) {
-    wrap.innerHTML = '<div class="empty-state"><i class="ti ti-star"></i><p>저장한 혜택이 없어요<br>카드의 ☆를 눌러 저장해 보세요</p></div>';
+    wrap.innerHTML = mine
+      ? '<div class="empty-state"><i class="ti ti-message-plus"></i><p>아직 올린 혜택이 없어요<br>받은 광고 문자를 올려보세요!</p></div>' + hiddenNote
+      : '<div class="empty-state"><i class="ti ti-star"></i><p>저장한 혜택이 없어요<br>카드의 ☆를 눌러 저장해 보세요</p></div>';
     return;
   }
   var ongoing = items.filter(function(d){ return !isExpired(d.end_date) && hasEndDate(d); });
   var nodate = items.filter(function(d){ return !isExpired(d.end_date) && !hasEndDate(d); });
   var expired = items.filter(function(d){ return isExpired(d.end_date); });
-  var html = secHead('저장한 혜택', items.length, '최근 저장 순') +
-    ongoing.concat(nodate, expired).map(function(d){ return cardHtml(d, -1); }).join('');
+  var html = secHead(mine ? '내가 올린 혜택' : '저장한 혜택', items.length, mine ? '최근 올린 순' : '최근 저장 순') +
+    ongoing.concat(nodate, expired).map(function(d){ return cardHtml(d, -1); }).join('') + hiddenNote;
   wrap.innerHTML = html;
   bindCards(wrap);
 }
@@ -879,9 +913,12 @@ function fmtWon(n) {
   return Math.round(n).toLocaleString() + '원';
 }
 
+var currentDetail = null;
+
 function openDetail(id) {
   var d = allItems.find(function(i){ return i.id == id; }) || savedItems.find(function(i){ return i.id == id; });
   if(!d) return;
+  currentDetail = d;
 
   // 조회수 +1
   if(db) {
@@ -915,12 +952,60 @@ function closeDetail() {
   document.getElementById('detailScreen').classList.remove('open');
 }
 
+// 혜택별 링크 (?id=123) — 열면 그 혜택의 상세 화면으로
+function itemUrl(id) {
+  return location.origin + location.pathname + '?id=' + encodeURIComponent(id);
+}
+
 function shareItem() {
+  var d = currentDetail;
+  var url = d ? itemUrl(d.id) : location.origin + location.pathname;
+  var title = d ? maskText(d.brand) + ' ' + maskText(d.summary) : '문자혜택';
   if(navigator.share) {
-    navigator.share({title:'문자혜택',url:window.location.href});
-  } else {
-    navigator.clipboard.writeText(window.location.href).then(function(){ showToast('링크 복사됐어요'); });
+    navigator.share({ title: title, text: title + ' - 문자혜택', url: url }).catch(function(){});
+    return;
   }
+  copyText(url, function(ok){ showToast(ok ? '링크 복사됐어요' : '링크를 복사하지 못했어요'); });
+}
+
+function copyText(text, done) {
+  if(navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function(){ done(true); }, function(){ done(fallbackCopy(text)); });
+  } else {
+    done(fallbackCopy(text));
+  }
+}
+
+function fallbackCopy(text) {
+  try {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch(e) {
+    return false;
+  }
+}
+
+// 공유 링크로 들어온 경우 첫 로드 후 한 번만 상세 열기
+var deepLinkId = (function(){
+  var m = /[?&]id=(\d+)/.exec(location.search);
+  return m ? m[1] : null;
+})();
+
+function openDeepLink() {
+  if(!deepLinkId) return;
+  var id = deepLinkId;
+  deepLinkId = null;
+  try { history.replaceState(null, '', location.pathname); } catch(e) {}
+  if(allItems.some(function(i){ return String(i.id) === id; })) openDetail(id);
+  else showToast('삭제되었거나 볼 수 없는 혜택이에요');
 }
 
 function openSheet() {
@@ -1376,6 +1461,7 @@ function doSubmit() {
           return;
         }
         console.log('저장 성공:', res.data);
+        if(res.data && res.data.id) rememberMine(res.data.id);
         onSubmitDone(res.data);
       })
       .catch(function(e){
@@ -1532,26 +1618,37 @@ function esc(s) {
 
 // 마감일이 있는지 (비어 있거나 날짜로 읽을 수 없으면 '기간 미정')
 function hasEndDate(d) {
-  return !!(d && d.end_date) && !isNaN(new Date(d.end_date));
+  return !!(d && d.end_date) && !isNaN(parseLocalDate(d.end_date));
+}
+
+// 'YYYY-MM-DD'를 UTC가 아닌 기기 시간대의 그날 0시로 읽음 (new Date('YYYY-MM-DD')는 UTC 0시 = 한국 오전 9시)
+function parseLocalDate(ds) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(ds || ''));
+  return m ? new Date(+m[1], +m[2]-1, +m[3]) : new Date(ds);
 }
 
 function isExpired(ds) {
   if(!ds) return false;
-  var end = new Date(ds);
+  var end = parseLocalDate(ds);
   if(isNaN(end)) return false;
   end.setHours(23,59,59,999);
   return end < new Date();
 }
 
+// 남은 날짜 수 (오늘 마감 = 0), 지났으면 null
 function calcDday(ds) {
   if(!ds) return null;
-  var d = Math.ceil((new Date(ds)-new Date())/(1000*60*60*24));
+  var end = parseLocalDate(ds);
+  if(isNaN(end)) return null;
+  var today = new Date();
+  today.setHours(0,0,0,0);
+  var d = Math.round((end - today)/(1000*60*60*24));
   return d>=0?d:null;
 }
 
 function fmtDate(ds) {
   if(!ds) return '미확인';
-  var d = new Date(ds);
+  var d = parseLocalDate(ds);
   return (d.getMonth()+1)+'/'+(d.getDate());
 }
 

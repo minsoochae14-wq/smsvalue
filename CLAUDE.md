@@ -3,11 +3,13 @@
 사용자가 받은 광고 문자(SMS)를 올리면 AI가 브랜드·혜택·기간을 분류해 공유하는 모바일 웹앱.
 
 - `index.html`: 실제 서비스 페이지 (단일 파일, HTML/CSS/JS 포함)
-- `index_15.html`: 예전 버전. 수정하지 말 것
 - 백엔드: Supabase (`sms_benefits` 테이블, RPC `upsert_sms_benefit`·`increment_view_count`, Edge Function `hyper-processor`로 AI 분석)
 - 코드의 Supabase 키는 공개용 anon 키
 - `upsert_sms_benefit`(서버)이 원문을 `mask_pii`로 가리고, 마스킹된 원문의 지문으로 중복을 판단하며, 신뢰도를 `min(AI 점수, 서버 점수)`로 다시 계산해 60점 미만·스미싱 의심·도배(1시간 30건 이상)면 `pending`으로 저장한다. 응답에 `status`와 `duplicate`가 들어 있다.
 - DB 변경 SQL은 `supabase/migrations/`, 되돌리기 SQL은 `supabase/rollback/`에 남긴다
+- 링크는 앱·서버 모두 가리지 않는다 (개인 추적 링크와 일반 링크를 구분할 수 없음). 지문은 링크를 빼고 계산한다
+- 색은 `:root`의 CSS 변수(`--bg`, `--card`, `--fill`, `--fill-soft`, `--tag` 등)로 관리한다. 현재 테마는 쿨그레이(#F2F4F6) 배경 + 흰 카드 그림자
+- 혜택별 링크는 `?id=123` 형식이고, 열면 상세 화면이 뜬다
 
 ## 작업 규칙
 
