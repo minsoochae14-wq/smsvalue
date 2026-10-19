@@ -107,6 +107,20 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .trust-bar-bg{height:7px;background:#f0f0ec;border-radius:4px;overflow:hidden}
 .trust-fill{height:100%;border-radius:4px}
 .dup-row{display:flex;align-items:center;gap:8px;padding:12px 14px;background:#f5f5f0;border-radius:12px;margin-bottom:20px}
+.links-box{margin-bottom:20px}
+.links-head{display:flex;align-items:baseline;gap:6px;margin-bottom:8px}
+.links-title{font-size:14px;font-weight:700;color:#111}
+.links-cnt{font-size:13px;font-weight:700;color:#1D9E75}
+.link-row{display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:6px;background:#fff;border:0.5px solid rgba(0,0,0,.1);border-radius:12px;text-decoration:none;color:inherit}
+.link-row:active{background:#f5f5f0}
+.link-row .ti-link{font-size:16px;color:#1D9E75;flex-shrink:0}
+.link-txt{flex:1;min-width:0}
+.link-host{display:block;font-size:13px;font-weight:600;color:#111}
+.link-url{display:block;font-size:12px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.link-row .ti-external-link{font-size:15px;color:#bbb;flex-shrink:0}
+.links-warn{display:flex;gap:6px;align-items:flex-start;font-size:12px;line-height:1.5;color:#999;margin-top:8px}
+.links-warn i{font-size:14px;margin-top:1px}
+.links-warn.bad{padding:10px 12px;border-radius:10px;background:#FFE0E0;color:#A32D2D}
 .dup-cnt{font-size:14px;font-weight:700;color:#1D9E75}
 .dup-txt{font-size:14px;color:#666}
 .detail-actions{padding:14px 16px 34px;border-top:0.5px solid rgba(0,0,0,.08);display:flex;gap:8px;background:#fff}
@@ -725,7 +739,8 @@ function openDetail(id) {
     '<div class="info-cell"><div class="info-lbl">조회수</div><div class="info-val">'+viewCount+'회</div></div>'+
     '</div>'+
     '<div class="trust-wrap"><div class="trust-row"><span style="font-size:14px;color:#999">신뢰도 점수</span><span style="font-size:14px;font-weight:700;color:'+tt+'">'+d.trust_score+'점</span></div><div class="trust-bar-bg"><div class="trust-fill" style="width:'+d.trust_score+'%;background:'+tc+'"></div></div></div>'+
-    '<div class="dup-row"><i class="ti ti-users" style="font-size:16px;color:#aaa"></i><span class="dup-cnt">'+(d.submit_count||1)+'명</span><span class="dup-txt">이 동일 문자를 제출했어요</span></div>';
+    '<div class="dup-row"><i class="ti ti-users" style="font-size:16px;color:#aaa"></i><span class="dup-cnt">'+(d.submit_count||1)+'명</span><span class="dup-txt">이 동일 문자를 제출했어요</span></div>'+
+    linksHtml(d);
   document.getElementById('detailScreen').classList.add('open');
 }
 
@@ -1288,6 +1303,42 @@ function piiNoteHtml(counts) {
   for(var k in counts) parts.push(k + ' ' + counts[k] + '건');
   if(!parts.length) return '';
   return '<div class="pii-note"><i class="ti ti-lock"></i><span>개인정보를 가리고 저장해요: ' + esc(parts.join(', ')) + '</span></div>';
+}
+
+// 원문 속 링크를 한 줄씩 누를 수 있게 — http(s)만 허용
+function extractLinks(text) {
+  var t = String(text || '');
+  var re = /(?:https?:\/\/)?(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+(?:com|net|org|kr|me|io|ly|gl|us|co|app|shop|link|info|biz|page|to|so|im|kakao)(?![a-z0-9-])(?:\/[^\s<>"'()\[\]{}가-힣]*)?(?:\*+\S*)?/gi;
+  var out = [], seen = {}, m;
+  while((m = re.exec(t))) {
+    var prev = t.charAt(m.index - 1);
+    if(prev === '@' || /[a-z0-9.\/]/i.test(prev)) continue;  // 이메일, 다른 주소의 일부
+    var u = m[0].replace(/[.,;:!?~·…]+$/, '');
+    if(u.indexOf('*') >= 0) continue;  // 주소 일부가 가려진 링크는 열리지 않으므로 제외
+    if(!/[a-z]/i.test(u.split('/')[0].replace(/^https?:\/\//i, '').replace(/\.[a-z]+$/i, ''))) continue;
+    var href = /^https?:\/\//i.test(u) ? u : 'https://' + u;
+    var key = href.replace(/^https?:\/\//i, '').replace(/\/$/, '').toLowerCase();
+    if(seen[key]) continue;
+    seen[key] = 1;
+    out.push({ href: href, host: href.replace(/^https?:\/\//i, '').split(/[\/?#]/)[0], text: u });
+  }
+  return out;
+}
+
+function linksHtml(d) {
+  var links = extractLinks(maskText(d.raw_sms));
+  if(!links.length) return '';
+  var low = d.trust_score < 50;
+  return '<div class="links-box"><div class="links-head"><span class="links-title">관련 링크</span><span class="links-cnt">'+links.length+'</span></div>'+
+    links.map(function(l){
+      return '<a class="link-row" href="'+esc(l.href)+'" target="_blank" rel="noopener noreferrer nofollow">'+
+        '<i class="ti ti-link"></i><span class="link-txt"><span class="link-host">'+esc(l.host)+'</span><span class="link-url">'+esc(l.text)+'</span></span>'+
+        '<i class="ti ti-external-link"></i></a>';
+    }).join('')+
+    '<div class="links-warn'+(low?' bad':'')+'"><i class="ti ti-alert-triangle"></i><span>'+
+    (low ? '신뢰도가 낮은 문자예요. 링크에서 개인정보나 결제 정보를 입력하지 마세요.'
+         : '문자에 들어 있던 링크예요. 주소가 공식 사이트인지 확인하고 들어가세요.')+
+    '</span></div></div>';
 }
 
 function maskText(s) {
