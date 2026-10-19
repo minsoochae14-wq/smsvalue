@@ -117,6 +117,8 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .result-lbl i{font-size:14px;pointer-events:none}
 .result-val{font-size:14px;font-weight:600;color:#111}
 .result-divider{height:0.5px;background:#f0f0ec}
+.pii-note{display:flex;gap:6px;align-items:flex-start;margin-top:12px;padding:10px 12px;border-radius:10px;background:#E1F5EE;color:#085041;font-size:12px;line-height:1.5}
+.pii-note i{font-size:15px;margin-top:1px}
 .trust-mini{display:flex;align-items:center;gap:10px}
 .tbar{flex:1;height:6px;background:#f0f0ec;border-radius:3px;overflow:hidden}
 .tfill{height:100%;border-radius:3px}
@@ -555,7 +557,7 @@ function renderList() {
       '<span class="catbadge">'+esc(d.category||'기타')+'</span>'+
       '<span class="tbadge '+tc+'">'+tl+'</span></div>'+
       '<div class="bcard-title" style="font-size:14px;margin-bottom:8px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+
-      '<span class="brand-inline">'+esc(d.brand)+'</span> <span class="summary-inline">'+esc(d.summary)+'</span></div>'+
+      '<span class="brand-inline">'+esc(maskText(d.brand))+'</span> <span class="summary-inline">'+esc(maskText(d.summary))+'</span></div>'+
       '<div class="bcard-foot" style="display:flex;align-items:center;justify-content:space-between">'+
       '<div class="count-wrap">'+
       '<span class="hot-count"><i class="ti ti-users"></i>'+(d.submit_count||1)+'명 제출</span>'+
@@ -585,13 +587,13 @@ function openDetail(id) {
     });
   }
 
-  document.getElementById('detailNavTitle').textContent = d.brand;
+  document.getElementById('detailNavTitle').textContent = maskText(d.brand);
   var tc = d.trust_score>=75?'#639922':d.trust_score>=50?'#BA7517':'#E24B4A';
   var tt = d.trust_score>=75?'#3B6D11':d.trust_score>=50?'#633806':'#A32D2D';
   var viewCount = (d.view_count || 0) + 1;
   document.getElementById('detailBody').innerHTML =
-    '<div class="brand-row"><div class="brand-ico">'+esc((d.brand||'').substring(0,2))+'</div><div><div class="brand-name">'+esc(d.brand)+'</div><div class="brand-cat">'+esc(d.category)+'</div></div></div>'+
-    '<div class="sms-box"><div class="sms-lbl">원문 문자</div><div class="sms-text">'+esc(d.raw_sms||'원문 없음')+'</div></div>'+
+    '<div class="brand-row"><div class="brand-ico">'+esc(maskText(d.brand).substring(0,2))+'</div><div><div class="brand-name">'+esc(maskText(d.brand))+'</div><div class="brand-cat">'+esc(d.category)+'</div></div></div>'+
+    '<div class="sms-box"><div class="sms-lbl">원문 문자</div><div class="sms-text">'+esc(maskText(d.raw_sms)||'원문 없음')+'</div></div>'+
     '<div class="info-grid">'+
     '<div class="info-cell"><div class="info-lbl">유효기간</div><div class="info-val">'+(d.end_date?'~'+fmtDate(d.end_date)+(isExpired(d.end_date)?' (마감)':''):'기간미정')+'</div></div>'+
     '<div class="info-cell"><div class="info-lbl">적용 지역</div><div class="info-val">'+esc(d.location||'전국')+'</div></div>'+
@@ -662,9 +664,12 @@ function onInput() {
 // 분석 요청 번호 — 입력이 바뀐 뒤 도착한 이전 응답은 무시
 var analyzeSeq = 0;
 
+var piiCounts = {};
+
 function showAI() {
-  var smsText = document.getElementById('smsTA').value.trim();
-  analyzeSMS(smsText);
+  var masked = maskPII(document.getElementById('smsTA').value.trim());
+  piiCounts = masked.counts;
+  analyzeSMS(masked.text);
 }
 
 async function analyzeSMS(smsText) {
@@ -1003,6 +1008,8 @@ function showAIResult(d) {
   d.category = d.category || '기타';
   d.summary = d.summary || '';
   d.location = d.location || '전국';
+  d.brand = maskText(d.brand);
+  d.summary = maskText(d.summary);
   aiResult = d;
   var tc = d.trust_score>=75?'#639922':d.trust_score>=50?'#BA7517':'#E24B4A';
   var tt = d.trust_score>=75?'#3B6D11':d.trust_score>=50?'#633806':'#A32D2D';
@@ -1018,7 +1025,8 @@ function showAIResult(d) {
     '<div class="result-divider"></div>'+
     '<div class="result-row"><span class="result-lbl"><i class="ti ti-calendar"></i>유효기간</span><span class="result-val">'+(d.end_date?'~'+fmtDate(d.end_date):'미확인')+'</span></div>'+
     '<div class="result-divider"></div>'+
-    '<div class="result-row"><span class="result-lbl"><i class="ti ti-shield-check"></i>신뢰도</span><div class="trust-mini"><div class="tbar"><div class="tfill" style="width:'+d.trust_score+'%;background:'+tc+'"></div></div><span style="font-size:13px;font-weight:700;color:'+tt+'">'+d.trust_score+'점 · '+tl+'</span></div></div>';
+    '<div class="result-row"><span class="result-lbl"><i class="ti ti-shield-check"></i>신뢰도</span><div class="trust-mini"><div class="tbar"><div class="tfill" style="width:'+d.trust_score+'%;background:'+tc+'"></div></div><span style="font-size:13px;font-weight:700;color:'+tt+'">'+d.trust_score+'점 · '+tl+'</span></div></div>'+
+    piiNoteHtml(piiCounts);
   document.getElementById('resultCard').classList.add('show');
   var btn = document.getElementById('submitOk');
   btn.disabled = false;
@@ -1027,7 +1035,7 @@ function showAIResult(d) {
 
 function doSubmit() {
   if(!aiResult) return;
-  var sms = document.getElementById('smsTA').value.trim();
+  var sms = maskText(document.getElementById('smsTA').value.trim());
   var btn = document.getElementById('submitOk');
   btn.disabled = true;
   btn.textContent = '저장 중...';
@@ -1086,6 +1094,80 @@ function onSubmitDone() {
     showToast('혜택이 등록됐어요!');
     fetchData();
   }, 1000);
+}
+
+// 개인정보 마스킹 — 이름, 계좌/카드/주민번호, 쿠폰·인증번호, 휴대폰, 이메일
+var NAME_SURNAMES = '김이박최정강조윤장임한오서신권황안송류전홍고문양손배백허유남심노하곽성차주우구민진나지엄변채원천방공현함염여추도석소설선마길위표명기반왕금옥육인맹제모탁국어은편용예봉경';
+var NAME_STOPWORDS = ['고객','회원','모든','오직','포장','애독자','여러분','가족','손님','주주','부모','선생','사장','원장','대표','관리자','담당자','이용자','가입자','입주민','학부모','소중한','우수','신규','기존','전체','당첨자','구매자','방문','이용','고객센터','회원가입','사업자','본인','고객분','회원분','저축은행','신한','국민','우리','하나','농협'];
+
+function looksLikeName(w) {
+  if(w.length === 4) {
+    if(!/^(남궁|황보|제갈|선우|독고|사공|서문)/.test(w)) return false;
+  } else if(NAME_SURNAMES.indexOf(w.charAt(0)) < 0) return false;
+  // 조사·어미로 끝나는 말(위해서는, 고객의 등)과 지명(김해시 등) 제외
+  if(/[는을를의에도로서시군읍면점]$/.test(w)) return false;
+  for(var i=0; i<NAME_STOPWORDS.length; i++) {
+    if(w.indexOf(NAME_STOPWORDS[i]) >= 0) return false;
+  }
+  return true;
+}
+
+function maskDigits(s) {
+  return s.replace(/[A-Za-z0-9]/g, '*');
+}
+
+function maskPII(text) {
+  var counts = {};
+  function hit(k){ counts[k] = (counts[k]||0) + 1; }
+  var t = String(text == null ? '' : text);
+
+  // 주민등록번호
+  t = t.replace(/\d{6}\s?-\s?[1-4]\d{6}/g, function(){ hit('주민번호'); return '******-*******'; });
+  // 이메일
+  t = t.replace(/[\w.+-]+@([\w-]+\.[\w.]+)/g, function(m, dom){ hit('이메일'); return '***@'+dom; });
+  // 계좌·카드·회원·쿠폰·인증번호 등 — 키워드 뒤의 번호
+  t = t.replace(/(계좌번호|계좌|카드번호|회원번호|고객번호|주문번호|예약번호|쿠폰번호|쿠폰코드|할인코드|프로모션코드|바우처|시리얼|일련번호|인증번호|인증코드|인증|PIN|핀번호)(\s*[:：]?\s*\[?\s*)([A-Za-z0-9][A-Za-z0-9-]{3,})/gi, function(m, kw, sep, code){
+    if(!/\d/.test(code)) return m;
+    hit(/계좌/.test(kw) ? '계좌번호' : /카드/.test(kw) ? '카드번호' : '쿠폰·인증번호');
+    return kw + sep + maskDigits(code);
+  });
+  // COUPON-1234 형태의 코드
+  t = t.replace(/\b(COUPON|CPN|CODE)-[A-Za-z0-9-]{4,}/gi, function(m){
+    if(/^[A-Za-z]+-\*+$/.test(m)) return m;
+    hit('쿠폰·인증번호'); return m.split('-')[0] + '-' + maskDigits(m.slice(m.indexOf('-')+1));
+  });
+  // 휴대폰 번호: 가운데 자리 가림
+  t = t.replace(/(01[016789])([-.\s]?)(\d{3,4})([-.\s]?)(\d{4})(?!\d)/g, function(m, a, s1, mid, s2, end){
+    hit('휴대폰'); return a + s1 + '****' + s2 + end;
+  });
+  // 12자리 이상 숫자 (카드·계좌 등)
+  t = t.replace(/(?:\d[-\s]?){12,19}(?!\d)/g, function(m, offset, str){
+    if(!/\d{4}/.test(m)) return m;
+    // 링크 주소 안의 숫자는 제외
+    if(/\S*[\/=?&#.]$/.test(str.slice(Math.max(0, offset-1), offset)) || /[a-z0-9-]\.[a-z]{2,}\/\S*$/i.test(str.slice(Math.max(0, offset-80), offset))) return m;
+    hit('카드·계좌번호'); return m.replace(/\d/g, '*');
+  });
+  // 이미 일부 가려진 이름 (채*수)
+  t = t.replace(/([가-힣])\*([가-힣])(?=\s*(?:님|고객|회원))/g, function(){ hit('이름'); return '○○○'; });
+  // 이름 + 님/고객님/회원님/께
+  t = t.replace(/(^|[^가-힣])([가-힣]{2,4}?)(\s?)(고객님|회원님|님|께서|께)/g, function(m, pre, w, sp, suf){
+    if(!looksLikeName(w)) return m;
+    if(w.length === 2 && !/고객님|회원님/.test(suf)) return m;
+    hit('이름'); return pre + '○○○' + sp + suf;
+  });
+
+  return { text: t, counts: counts };
+}
+
+function piiNoteHtml(counts) {
+  var parts = [];
+  for(var k in counts) parts.push(k + ' ' + counts[k] + '건');
+  if(!parts.length) return '';
+  return '<div class="pii-note"><i class="ti ti-lock"></i><span>개인정보를 가리고 저장해요: ' + esc(parts.join(', ')) + '</span></div>';
+}
+
+function maskText(s) {
+  return maskPII(s).text;
 }
 
 function esc(s) {
