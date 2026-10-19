@@ -6,6 +6,8 @@
 - `index_15.html`: 예전 버전. 수정하지 말 것
 - 백엔드: Supabase (`sms_benefits` 테이블, RPC `upsert_sms_benefit`·`increment_view_count`, Edge Function `hyper-processor`로 AI 분석)
 - 코드의 Supabase 키는 공개용 anon 키
+- `upsert_sms_benefit`(서버)이 원문을 `mask_pii`로 가리고, 마스킹된 원문의 지문으로 중복을 판단하며, 신뢰도를 `min(AI 점수, 서버 점수)`로 다시 계산해 60점 미만·스미싱 의심·도배(1시간 30건 이상)면 `pending`으로 저장한다. 응답에 `status`와 `duplicate`가 들어 있다.
+- DB 변경 SQL은 `supabase/migrations/`, 되돌리기 SQL은 `supabase/rollback/`에 남긴다
 
 ## 작업 규칙
 

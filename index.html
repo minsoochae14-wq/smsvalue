@@ -1376,7 +1376,7 @@ function doSubmit() {
           return;
         }
         console.log('저장 성공:', res.data);
-        onSubmitDone();
+        onSubmitDone(res.data);
       })
       .catch(function(e){
         console.error('네트워크 오류:', e);
@@ -1391,13 +1391,25 @@ function doSubmit() {
   }
 }
 
-function onSubmitDone() {
+// saved: 저장 함수가 돌려준 글 (status: approved/pending, duplicate: 이미 있던 문자인지)
+function onSubmitDone(saved) {
   var btn = document.getElementById('submitOk');
-  btn.textContent = '제출 완료! 리스트에 추가됐어요';
+  var pending = saved && saved.status === 'pending';
+  var dup = saved && saved.duplicate === true;
+  var btnText = '제출 완료! 리스트에 추가됐어요';
+  var toast = '혜택이 등록됐어요!';
+  if(pending) {
+    btnText = '제출 완료! 확인 후 공개돼요';
+    toast = dup ? '이미 확인 중인 문자예요' : '확인 후 공개돼요';
+  } else if(dup) {
+    btnText = '이미 등록된 혜택이에요';
+    toast = '이미 등록된 혜택이에요 · ' + (Number(saved.submit_count) || 2) + '명째 제출';
+  }
+  btn.textContent = btnText;
   btn.style.background = '#085041';
   setTimeout(function(){
     closeSheet();
-    showToast('혜택이 등록됐어요!');
+    showToast(toast);
     fetchData();
   }, 1000);
 }
