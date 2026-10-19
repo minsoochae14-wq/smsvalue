@@ -50,6 +50,28 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .meta{font-size:12px;color:#aaa;display:flex;align-items:center;gap:4px}
 .dday{font-size:12px;font-weight:700;color:#E24B4A;margin-left:auto}
 .bcard.expired{opacity:.55}
+.bcard-main{display:flex;gap:12px;align-items:flex-start;margin-bottom:10px}
+.bcard-body{flex:1;min-width:0}
+.perk{flex-shrink:0;width:64px;min-height:64px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center;padding:6px 2px}
+.perk b{font-size:18px;font-weight:800;line-height:1.1;letter-spacing:-.5px;word-break:keep-all}
+.perk b.sm{font-size:14px}
+.perk span{font-size:11px;font-weight:600}
+.perk i{font-size:24px}
+.perk.pct{background:#FDEEE8;color:#C2410C}
+.perk.won{background:#E1F5EE;color:#0B6B4D}
+.perk.plus{background:#FCE7F3;color:#A21C5B}
+.perk.free{background:#E6F0FD;color:#1D4ED8}
+.perk.none{background:#f0f0ec;color:#aaa}
+.sec-head{display:flex;align-items:baseline;gap:6px;margin:6px 2px 0}
+.sec-head:first-child{margin-top:0}
+.sec-title{font-size:15px;font-weight:700;color:#111}
+.sec-cnt{font-size:13px;font-weight:700;color:#1D9E75}
+.sec-sub{font-size:12px;color:#aaa;margin-left:auto}
+.sec-head.hot .sec-cnt{color:#E24B4A}
+.exp-toggle{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:6px;padding:12px;border-radius:12px;border:0.5px dashed rgba(0,0,0,.15);background:transparent;font-size:13px;font-weight:500;color:#888;cursor:pointer;width:100%}
+.exp-toggle i{font-size:15px}
+.chip .cnt{margin-left:4px;font-weight:700;opacity:.6}
+.list-note{text-align:center;font-size:13px;color:#aaa;padding:14px 0 4px;line-height:1.6}
 .ended{font-size:12px;font-weight:700;color:#999;margin-left:auto}
 .empty-state{text-align:center;padding:60px 20px;color:#bbb}
 .empty-state i{font-size:40px;margin-bottom:12px;display:block}
@@ -169,20 +191,6 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
   </div>
   <div class="filter-row" id="filterRow">
     <span class="chip on" data-cat="전체">전체</span>
-    <span class="chip" data-cat="음료/카페">음료/카페</span>
-    <span class="chip" data-cat="편의점">편의점</span>
-    <span class="chip" data-cat="배달앱">배달앱</span>
-    <span class="chip" data-cat="외식">외식</span>
-    <span class="chip" data-cat="패션/의류">패션</span>
-    <span class="chip" data-cat="뷰티/헬스">뷰티/헬스</span>
-    <span class="chip" data-cat="마트/쇼핑">마트/쇼핑</span>
-    <span class="chip" data-cat="금융/카드">금융/카드</span>
-    <span class="chip" data-cat="통신">통신</span>
-    <span class="chip" data-cat="독서/교육">독서/교육</span>
-    <span class="chip" data-cat="여행/숙박">여행/숙박</span>
-    <span class="chip" data-cat="OTT/구독">OTT/구독</span>
-    <span class="chip" data-cat="공공/기타">공공/기타</span>
-    <span class="chip" data-cat="기타">기타</span>
   </div>
   <div class="scroll-area">
     <div class="list-wrap" id="listWrap">
@@ -255,6 +263,7 @@ var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 var db = null;
 var allItems = [];
 var currentFilter = '전체';
+var showExpired = false;
 var currentSort = 'latest';
 var currentCity = '전국';
 var currentDistrict = '';
@@ -495,7 +504,6 @@ function fetchData() {
 function renderList() {
   var q = document.getElementById('searchInput').value.toLowerCase();
   var items = allItems.filter(function(d){
-    if(currentFilter !== '전체' && d.category !== currentFilter) return false;
     if(q && !(d.brand||'').toLowerCase().includes(q)) return false;
     // 지역 필터
     if(currentCity && currentCity !== '전국') {
@@ -513,6 +521,11 @@ function renderList() {
     return true;
   });
 
+  renderChips(items);
+  if(currentFilter !== '전체') {
+    items = items.filter(function(d){ return normCat(d.category) === currentFilter; });
+  }
+
   // 정렬
   if(currentSort === 'popular') {
     items = items.slice().sort(function(a,b){ return (b.submit_count||1)-(a.submit_count||1); });
@@ -523,55 +536,166 @@ function renderList() {
       return new Date(a.end_date)-new Date(b.end_date);
     });
   }
-  // 마감된 혜택은 맨 아래로 (기존 순서 유지)
-  items = items.filter(function(d){ return !isExpired(d.end_date); })
-    .concat(items.filter(function(d){ return isExpired(d.end_date); }));
+  var active = items.filter(function(d){ return !isExpired(d.end_date); });
+  var expired = items.filter(function(d){ return isExpired(d.end_date); });
 
   var wrap = document.getElementById('listWrap');
   if(!items.length) {
-    wrap.innerHTML = '<div class="empty-state"><i class="ti ti-inbox"></i><p>아직 등록된 혜택이 없어요<br>첫 번째로 문자를 올려보세요!</p></div>';
+    wrap.innerHTML = '<div class="empty-state"><i class="ti ti-inbox"></i><p>'+(allItems.length?'조건에 맞는 혜택이 없어요':'아직 등록된 혜택이 없어요<br>첫 번째로 문자를 올려보세요!')+'</p></div>';
     return;
   }
 
-  var isPopular = currentSort === 'popular';
-
-  wrap.innerHTML = items.map(function(d, idx){
-    var tc = d.trust_score>=75?'th':d.trust_score>=50?'tm':'tl';
-    var tl = d.trust_score>=75?'신뢰 높음':d.trust_score>=50?'신뢰 보통':'검토 중';
-    var dd = calcDday(d.end_date);
-    var expired = isExpired(d.end_date);
-    var endDate = d.end_date ? '~'+fmtDate(d.end_date) : '기간미정';
-
-    var rankBadge = '';
-    var cardStyle = 'position:relative';
-    var topStyle = '';
-    if(isPopular && idx < 3 && !expired) {
-      var rClass = idx===0?'r1':idx===1?'r2':'r3';
-      rankBadge = '<div class="rank-badge '+rClass+'">'+(idx+1)+'위</div>';
-      topStyle = ' style="margin-top:12px"';
-      if(idx===0) cardStyle += ';border:1.5px solid #EF9F27';
-    }
-
-    return '<div class="bcard'+(expired?' expired':'')+'" data-id="'+esc(d.id)+'" style="'+cardStyle+'">'+rankBadge+
-      '<div class="bcard-top"'+topStyle+'>'+
-      '<span class="catbadge">'+esc(d.category||'기타')+'</span>'+
-      '<span class="tbadge '+tc+'">'+tl+'</span></div>'+
-      '<div class="bcard-title" style="font-size:14px;margin-bottom:8px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+
-      '<span class="brand-inline">'+esc(maskText(d.brand))+'</span> <span class="summary-inline">'+esc(maskText(d.summary))+'</span></div>'+
-      '<div class="bcard-foot" style="display:flex;align-items:center;justify-content:space-between">'+
-      '<div class="count-wrap">'+
-      '<span class="hot-count"><i class="ti ti-users"></i>'+(d.submit_count||1)+'명 제출</span>'+
-      '<span class="view-count"><i class="ti ti-eye"></i>'+(d.view_count||0)+'명 조회</span>'+
-      '</div>'+
-      '<div style="display:flex;align-items:center;gap:6px">'+
-      '<span class="meta"><i class="ti ti-calendar"></i>'+endDate+'</span>'+
-      (expired?'<span class="ended">마감</span>':dd!==null?'<span class="dday">D-'+dd+'</span>':'<span style="min-width:32px"></span>')+
-      '</div></div></div>';
-  }).join('');
+  var html = '';
+  if(currentSort === 'latest') {
+    // 7일 안에 끝나는 혜택은 따로 묶어서 맨 위에
+    var soon = active.filter(function(d){ var dd = calcDday(d.end_date); return dd !== null && dd <= 7; })
+      .sort(function(a,b){ return new Date(a.end_date)-new Date(b.end_date); });
+    var rest = active.filter(function(d){ return soon.indexOf(d) < 0; });
+    if(soon.length) html += secHead('🔥 곧 마감', soon.length, '7일 안에 끝나요', 'hot') + soon.map(function(d){ return cardHtml(d, -1); }).join('');
+    if(rest.length) html += secHead('진행 중', rest.length, '최신순') + rest.map(function(d){ return cardHtml(d, -1); }).join('');
+  } else if(active.length) {
+    html += secHead('진행 중', active.length, currentSort === 'popular' ? '제출 많은 순' : '마감 빠른 순') +
+      active.map(function(d, idx){ return cardHtml(d, currentSort === 'popular' ? idx : -1); }).join('');
+  }
+  if(!active.length) {
+    html += '<div class="list-note">지금 진행 중인 혜택이 없어요<br>받은 문자를 올려 주세요!</div>';
+  }
+  if(expired.length) {
+    html += '<button class="exp-toggle" id="expToggle">'+(showExpired?'마감된 혜택 접기':'마감된 혜택 '+expired.length+'개 보기')+
+      '<i class="ti ti-chevron-'+(showExpired?'up':'down')+'"></i></button>';
+    if(showExpired) html += expired.map(function(d){ return cardHtml(d, -1); }).join('');
+  }
+  wrap.innerHTML = html;
 
   document.querySelectorAll('.bcard').forEach(function(c){
     c.addEventListener('click', function(){ openDetail(this.dataset.id); });
   });
+  var tg = document.getElementById('expToggle');
+  if(tg) tg.addEventListener('click', function(){ showExpired = !showExpired; renderList(); });
+}
+
+function secHead(title, cnt, sub, cls) {
+  return '<div class="sec-head'+(cls?' '+cls:'')+'"><span class="sec-title">'+title+'</span><span class="sec-cnt">'+cnt+'</span>'+
+    (sub?'<span class="sec-sub">'+sub+'</span>':'')+'</div>';
+}
+
+function cardHtml(d, rankIdx) {
+  var tc = d.trust_score>=75?'th':d.trust_score>=50?'tm':'tl';
+  var tl = d.trust_score>=75?'신뢰 높음':d.trust_score>=50?'신뢰 보통':'검토 중';
+  var dd = calcDday(d.end_date);
+  var expired = isExpired(d.end_date);
+  var endDate = d.end_date ? '~'+fmtDate(d.end_date) : '기간미정';
+
+  var rankBadge = '';
+  var cardStyle = 'position:relative';
+  var topStyle = '';
+  if(rankIdx >= 0 && rankIdx < 3) {
+    var rClass = rankIdx===0?'r1':rankIdx===1?'r2':'r3';
+    rankBadge = '<div class="rank-badge '+rClass+'">'+(rankIdx+1)+'위</div>';
+    topStyle = ' style="margin-top:14px"';
+    if(rankIdx===0) cardStyle += ';border:1.5px solid #EF9F27';
+  }
+
+  var pk = getPerk(d);
+  var perkHtml = pk
+    ? '<div class="perk '+pk.kind+'"><b'+(pk.value.length>4?' class="sm"':'')+'>'+esc(pk.value)+'</b><span>'+esc(pk.label)+'</span></div>'
+    : '<div class="perk none"><i class="ti ti-gift"></i></div>';
+  var ddHtml = expired ? '<span class="ended">마감</span>'
+    : dd === 0 ? '<span class="dday">오늘 마감</span>'
+    : dd !== null ? '<span class="dday">D-'+dd+'</span>' : '';
+
+  return '<div class="bcard'+(expired?' expired':'')+'" data-id="'+esc(d.id)+'" style="'+cardStyle+'">'+rankBadge+
+    '<div class="bcard-main"'+topStyle+'>'+perkHtml+
+    '<div class="bcard-body">'+
+    '<div class="bcard-top">'+
+    '<span class="catbadge">'+esc(catLabel(normCat(d.category)))+'</span>'+
+    '<span class="tbadge '+tc+'">'+tl+'</span></div>'+
+    '<div class="bcard-title" style="font-size:14px;margin-bottom:0;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+
+    '<span class="brand-inline">'+esc(maskText(d.brand))+'</span> <span class="summary-inline">'+esc(maskText(d.summary))+'</span></div>'+
+    '</div></div>'+
+    '<div class="bcard-foot">'+
+    '<div class="count-wrap">'+
+    '<span class="hot-count"><i class="ti ti-users"></i>'+(d.submit_count||1)+'명 제출</span>'+
+    '<span class="view-count"><i class="ti ti-eye"></i>'+(d.view_count||0)+'명 조회</span>'+
+    '</div>'+
+    '<div style="display:flex;align-items:center;gap:6px">'+
+    '<span class="meta"><i class="ti ti-calendar"></i>'+endDate+'</span>'+ddHtml+
+    '</div></div></div>';
+}
+
+// 카테고리 정리 — AI·규칙 분석이 만든 비슷한 이름을 하나로
+var CATEGORIES = ['음료/카페','편의점','배달앱','외식','패션/의류','뷰티/헬스','마트/쇼핑','금융/카드','통신','IT/앱','독서/교육','여행/숙박','OTT/구독','공공/기타','기타'];
+var CAT_ALIAS = {'뷰티':'뷰티/헬스','헬스':'뷰티/헬스','배달':'배달앱','패션':'패션/의류','의류':'패션/의류','스포츠':'패션/의류','금융':'금융/카드','카드':'금융/카드','쇼핑':'마트/쇼핑','마트':'마트/쇼핑','생활용품':'마트/쇼핑','카페':'음료/카페','음료':'음료/카페','외식/패스트푸드':'외식','외식/치킨':'외식','외식/피자':'외식','교육':'독서/교육','독서':'독서/교육','여행':'여행/숙박','숙박':'여행/숙박','OTT':'OTT/구독','구독':'OTT/구독','공공':'공공/기타','IT':'IT/앱','앱':'IT/앱'};
+
+function normCat(c) {
+  c = String(c || '').trim();
+  if(CATEGORIES.indexOf(c) >= 0) return c;
+  if(CAT_ALIAS[c]) return CAT_ALIAS[c];
+  return '기타';
+}
+
+function catLabel(c) {
+  return c === '패션/의류' ? '패션' : c;
+}
+
+function renderChips(items) {
+  var counts = {};
+  items.forEach(function(d){ var c = normCat(d.category); counts[c] = (counts[c]||0) + 1; });
+  var cats = CATEGORIES.filter(function(c){ return counts[c] || c === currentFilter; });
+  cats.sort(function(a,b){
+    if(a === '기타') return 1;
+    if(b === '기타') return -1;
+    return (counts[b]||0) - (counts[a]||0);
+  });
+  var html = '<span class="chip'+(currentFilter==='전체'?' on':'')+'" data-cat="전체">전체<span class="cnt">'+items.length+'</span></span>';
+  cats.forEach(function(c){
+    html += '<span class="chip'+(currentFilter===c?' on':'')+'" data-cat="'+esc(c)+'">'+esc(catLabel(c))+'<span class="cnt">'+(counts[c]||0)+'</span></span>';
+  });
+  document.getElementById('filterRow').innerHTML = html;
+}
+
+// 혜택 크기 뽑기 — 요약에서 먼저, 없으면 원문에서 키워드가 붙은 것만
+function getPerk(d) {
+  return perkFrom(maskText(d.summary), false) || perkFrom(maskText(d.raw_sms), true);
+}
+
+function perkFrom(t, strict) {
+  t = String(t || '');
+  if(!t) return null;
+  var m = t.match(/(?:^|[^\d.])(\d{1,2})\s*\+\s*(\d{1,2})(?![\d%])/);
+  if(m && +m[1] >= 1 && +m[2] >= 1 && +m[1] <= 10 && +m[2] <= 10) return { kind:'plus', value:m[1]+'+'+m[2], label:'증정' };
+  m = strict ? t.match(/(\d{1,2}(?:\.\d+)?)\s*%\s*(할인|적립|캐시백|쿠폰|페이백|세일|OFF|off)/)
+             : t.match(/(\d{1,2}(?:\.\d+)?)\s*%\s*([가-힣A-Za-z]*)/);
+  if(m) {
+    var rateCtx = /연\s*$|금리|이율|이자/.test(t.slice(Math.max(0, m.index-4), m.index)) || /금리|이자|적금|예금/.test(m[2]||'');
+    return { kind:'pct', value:m[1]+'%', label: rateCtx ? '금리' : perkLabel(m[2], '할인') };
+  }
+  // '1만원 이상 결제 시'처럼 조건 금액이나 '2만원대' 가격은 건너뜀
+  var wonRe = strict ? /(\d[\d,]*(?:\.\d+)?)\s*(억|만|천)?\s*원\s*(할인|쿠폰|적립|캐시백|지원|증정|상당|페이백|지급|혜택)/g
+                     : /(\d[\d,]*(?:\.\d+)?)\s*(억|만|천)?\s*원\s*([가-힣]*)/g;
+  while((m = wonRe.exec(t))) {
+    if(/^(이상|이하|미만|초과|대|당|부터|결제|구매|이용)/.test(m[3] || '') || /^\s*(이상|이하|미만|초과)/.test(t.slice(m.index + m[0].length))) continue;
+    var n = parseFloat(m[1].replace(/,/g,'')) * (m[2]==='억'?100000000:m[2]==='만'?10000:m[2]==='천'?1000:1);
+    if(n >= 100) return { kind:'won', value:fmtWon(n), label:perkLabel(m[3], '혜택') };
+  }
+  m = t.match(/무료\s*(배송|체험|증정|이용|제공|쿠폰|진단|상담|수강|가입|입장|주차|세미나)?(?!\s*(?:수신|거부|전화|상담전화))/);
+  if(m && (!strict || m[1]) && !/무료\s*(수신|거부)/.test(t.slice(m.index, m.index + 8))) return { kind:'free', value:'무료', label:m[1] || '혜택' };
+  if(!strict && /증정|사은품|기프트|드립니다/.test(t)) return { kind:'free', value:'증정', label:'사은품' };
+  return null;
+}
+
+function perkLabel(word, def) {
+  var w = String(word || '');
+  var keys = ['할인','적립','캐시백','쿠폰','페이백','지원','증정','지급','세일'];
+  for(var i=0; i<keys.length; i++) if(w.indexOf(keys[i]) === 0) return keys[i];
+  if(/^off$/i.test(w)) return '할인';
+  return def;
+}
+
+function fmtWon(n) {
+  if(n >= 100000000) return (Math.round(n/10000000)/10) + '억원';
+  if(n >= 10000) return (Math.round(n/1000)/10) + '만원';
+  return Math.round(n).toLocaleString() + '원';
 }
 
 function openDetail(id) {
@@ -592,7 +716,7 @@ function openDetail(id) {
   var tt = d.trust_score>=75?'#3B6D11':d.trust_score>=50?'#633806':'#A32D2D';
   var viewCount = (d.view_count || 0) + 1;
   document.getElementById('detailBody').innerHTML =
-    '<div class="brand-row"><div class="brand-ico">'+esc(maskText(d.brand).substring(0,2))+'</div><div><div class="brand-name">'+esc(maskText(d.brand))+'</div><div class="brand-cat">'+esc(d.category)+'</div></div></div>'+
+    '<div class="brand-row"><div class="brand-ico">'+esc(maskText(d.brand).substring(0,2))+'</div><div><div class="brand-name">'+esc(maskText(d.brand))+'</div><div class="brand-cat">'+esc(catLabel(normCat(d.category)))+'</div></div></div>'+
     '<div class="sms-box"><div class="sms-lbl">원문 문자</div><div class="sms-text">'+esc(maskText(d.raw_sms)||'원문 없음')+'</div></div>'+
     '<div class="info-grid">'+
     '<div class="info-cell"><div class="info-lbl">유효기간</div><div class="info-val">'+(d.end_date?'~'+fmtDate(d.end_date)+(isExpired(d.end_date)?' (마감)':''):'기간미정')+'</div></div>'+
@@ -1005,7 +1129,7 @@ function showAIResult(d) {
   var score = Number(d.trust_score);
   d.trust_score = isFinite(score) ? Math.max(0, Math.min(100, Math.round(score))) : 50;
   d.brand = d.brand || '알수없음';
-  d.category = d.category || '기타';
+  d.category = normCat(d.category);
   d.summary = d.summary || '';
   d.location = d.location || '전국';
   d.brand = maskText(d.brand);
