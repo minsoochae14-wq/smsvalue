@@ -73,6 +73,8 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .chip .cnt{margin-left:4px;font-weight:700;opacity:.6}
 .list-note{text-align:center;font-size:13px;color:#aaa;padding:14px 0 4px;line-height:1.6}
 .ended{font-size:12px;font-weight:700;color:#999;margin-left:auto}
+.nodate-tag{font-size:11px;font-weight:600;padding:3px 8px;border-radius:10px;background:#EDEDE8;color:#8A8A85}
+.sec-head.nodate .sec-cnt{color:#999}
 .empty-state{text-align:center;padding:60px 20px;color:#bbb}
 .empty-state i{font-size:40px;margin-bottom:12px;display:block}
 .empty-state p{font-size:14px;line-height:1.6}
@@ -553,13 +555,15 @@ function renderList() {
     items = items.slice().sort(function(a,b){ return (b.submit_count||1)-(a.submit_count||1); });
   } else if(currentSort === 'deadline') {
     items = items.slice().sort(function(a,b){
-      if(!a.end_date) return 1;
-      if(!b.end_date) return -1;
+      if(!hasEndDate(a)) return hasEndDate(b) ? 1 : 0;
+      if(!hasEndDate(b)) return -1;
       return new Date(a.end_date)-new Date(b.end_date);
     });
   }
-  var active = items.filter(function(d){ return !isExpired(d.end_date); });
+  // 진행 중 = 마감일이 있고 아직 안 지난 것 / 기간 미정 = 마감일 없음 / 마감 = 지난 것
   var expired = items.filter(function(d){ return isExpired(d.end_date); });
+  var ongoing = items.filter(function(d){ return !isExpired(d.end_date) && hasEndDate(d); });
+  var nodate = items.filter(function(d){ return !isExpired(d.end_date) && !hasEndDate(d); });
 
   var wrap = document.getElementById('listWrap');
   if(!items.length) {
@@ -570,16 +574,20 @@ function renderList() {
   var html = '';
   if(currentSort === 'latest') {
     // 7일 안에 끝나는 혜택은 따로 묶어서 맨 위에
-    var soon = active.filter(function(d){ var dd = calcDday(d.end_date); return dd !== null && dd <= 7; })
+    var soon = ongoing.filter(function(d){ var dd = calcDday(d.end_date); return dd !== null && dd <= 7; })
       .sort(function(a,b){ return new Date(a.end_date)-new Date(b.end_date); });
-    var rest = active.filter(function(d){ return soon.indexOf(d) < 0; });
+    var rest = ongoing.filter(function(d){ return soon.indexOf(d) < 0; });
     if(soon.length) html += secHead('🔥 곧 마감', soon.length, '7일 안에 끝나요', 'hot') + soon.map(function(d){ return cardHtml(d, -1); }).join('');
     if(rest.length) html += secHead('진행 중', rest.length, '최신순') + rest.map(function(d){ return cardHtml(d, -1); }).join('');
-  } else if(active.length) {
-    html += secHead('진행 중', active.length, currentSort === 'popular' ? '제출 많은 순' : '마감 빠른 순') +
-      active.map(function(d, idx){ return cardHtml(d, currentSort === 'popular' ? idx : -1); }).join('');
+  } else if(ongoing.length) {
+    html += secHead('진행 중', ongoing.length, currentSort === 'popular' ? '제출 많은 순' : '마감 빠른 순') +
+      ongoing.map(function(d, idx){ return cardHtml(d, currentSort === 'popular' ? idx : -1); }).join('');
   }
-  if(!active.length) {
+  if(nodate.length) {
+    html += secHead('기간 미정', nodate.length, currentSort === 'popular' ? '제출 많은 순' : '마감일이 없는 혜택', 'nodate') +
+      nodate.map(function(d){ return cardHtml(d, -1); }).join('');
+  }
+  if(!ongoing.length && !nodate.length) {
     html += '<div class="list-note">지금 진행 중인 혜택이 없어요<br>받은 문자를 올려 주세요!</div>';
   }
   if(expired.length) {
@@ -727,10 +735,11 @@ function renderSaved() {
     wrap.innerHTML = '<div class="empty-state"><i class="ti ti-star"></i><p>저장한 혜택이 없어요<br>카드의 ☆를 눌러 저장해 보세요</p></div>';
     return;
   }
-  var active = items.filter(function(d){ return !isExpired(d.end_date); });
+  var ongoing = items.filter(function(d){ return !isExpired(d.end_date) && hasEndDate(d); });
+  var nodate = items.filter(function(d){ return !isExpired(d.end_date) && !hasEndDate(d); });
   var expired = items.filter(function(d){ return isExpired(d.end_date); });
   var html = secHead('저장한 혜택', items.length, '최근 저장 순') +
-    active.concat(expired).map(function(d){ return cardHtml(d, -1); }).join('');
+    ongoing.concat(nodate, expired).map(function(d){ return cardHtml(d, -1); }).join('');
   wrap.innerHTML = html;
   bindCards(wrap);
 }
@@ -745,7 +754,7 @@ function cardHtml(d, rankIdx) {
   var tl = d.trust_score>=75?'신뢰 높음':d.trust_score>=50?'신뢰 보통':'검토 중';
   var dd = calcDday(d.end_date);
   var expired = isExpired(d.end_date);
-  var endDate = d.end_date ? '~'+fmtDate(d.end_date) : '기간미정';
+  var dated = hasEndDate(d);
 
   var rankBadge = '';
   var cardStyle = 'position:relative';
@@ -780,7 +789,8 @@ function cardHtml(d, rankIdx) {
     '<span class="view-count"><i class="ti ti-eye"></i>'+(d.view_count||0)+'명 조회</span>'+
     '</div>'+
     '<div style="display:flex;align-items:center;gap:6px">'+
-    '<span class="meta"><i class="ti ti-calendar"></i>'+endDate+'</span>'+ddHtml+
+    (dated ? '<span class="meta"><i class="ti ti-calendar"></i>~'+fmtDate(d.end_date)+'</span>'+ddHtml
+           : '<span class="nodate-tag">기간 미정</span>')+
     saveBtnHtml(d.id)+
     '</div></div></div>';
 }
@@ -881,7 +891,7 @@ function openDetail(id) {
     '<div class="brand-row"><div class="brand-ico">'+esc(maskText(d.brand).substring(0,2))+'</div><div><div class="brand-name">'+esc(maskText(d.brand))+'</div><div class="brand-cat">'+esc(catLabel(normCat(d.category)))+'</div></div></div>'+
     '<div class="sms-box"><div class="sms-lbl">원문 문자</div><div class="sms-text">'+esc(maskText(d.raw_sms)||'원문 없음')+'</div></div>'+
     '<div class="info-grid">'+
-    '<div class="info-cell"><div class="info-lbl">유효기간</div><div class="info-val">'+(d.end_date?'~'+fmtDate(d.end_date)+(isExpired(d.end_date)?' (마감)':''):'기간미정')+'</div></div>'+
+    '<div class="info-cell"><div class="info-lbl">유효기간</div><div class="info-val">'+(hasEndDate(d)?'~'+fmtDate(d.end_date)+(isExpired(d.end_date)?' (마감)':''):'기간 미정')+'</div></div>'+
     '<div class="info-cell"><div class="info-lbl">적용 지역</div><div class="info-val">'+esc(d.location||'전국')+'</div></div>'+
     '<div class="info-cell"><div class="info-lbl">제출자 수</div><div class="info-val">'+(d.submit_count||1)+'명</div></div>'+
     '<div class="info-cell"><div class="info-lbl">조회수</div><div class="info-val">'+viewCount+'회</div></div>'+
@@ -1497,6 +1507,11 @@ function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
   });
+}
+
+// 마감일이 있는지 (비어 있거나 날짜로 읽을 수 없으면 '기간 미정')
+function hasEndDate(d) {
+  return !!(d && d.end_date) && !isNaN(new Date(d.end_date));
 }
 
 function isExpired(ds) {
