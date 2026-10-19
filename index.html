@@ -1096,7 +1096,7 @@ function onSubmitDone() {
   }, 1000);
 }
 
-// 개인정보 마스킹 — 이름, 계좌/카드/주민번호, 쿠폰·인증번호, 휴대폰, 이메일, 개인 링크
+// 개인정보 마스킹 — 이름, 계좌/카드/주민번호, 쿠폰·인증번호, 휴대폰, 이메일
 var NAME_SURNAMES = '김이박최정강조윤장임한오서신권황안송류전홍고문양손배백허유남심노하곽성차주우구민진나지엄변채원천방공현함염여추도석소설선마길위표명기반왕금옥육인맹제모탁국어은편용예봉경';
 var NAME_STOPWORDS = ['고객','회원','모든','오직','포장','애독자','여러분','가족','손님','주주','부모','선생','사장','원장','대표','관리자','담당자','이용자','가입자','입주민','학부모','소중한','우수','신규','기존','전체','당첨자','구매자','방문','이용','고객센터','회원가입','사업자','본인','고객분','회원분','저축은행','신한','국민','우리','하나','농협'];
 
@@ -1112,20 +1112,6 @@ function looksLikeName(w) {
   return true;
 }
 
-// 개인별 추적 토큰처럼 보이는 경로인지 (쿼리 값, 대소문자 섞인 문자열, 영문+숫자 섞인 문자열)
-function looksLikeToken(path) {
-  if(/[?&][^=&]+=[^&]{4,}/.test(path)) return true;
-  var segs = path.split(/[\/?#&=._-]/);
-  for(var i=0; i<segs.length; i++) {
-    var g = segs[i];
-    if(g.length < 5) continue;
-    if(/[a-z]/.test(g) && /[A-Z]/.test(g)) return true;
-    if(/[A-Za-z]/.test(g) && /\d/.test(g)) return true;
-    if(/^\d{6,}$/.test(g)) return true;
-  }
-  return false;
-}
-
 function maskDigits(s) {
   return s.replace(/[A-Za-z0-9]/g, '*');
 }
@@ -1139,12 +1125,6 @@ function maskPII(text) {
   t = t.replace(/\d{6}\s?-\s?[1-4]\d{6}/g, function(){ hit('주민번호'); return '******-*******'; });
   // 이메일
   t = t.replace(/[\w.+-]+@([\w-]+\.[\w.]+)/g, function(m, dom){ hit('이메일'); return '***@'+dom; });
-  // 링크: 도메인만 남기고 경로(개인 추적 토큰 가능)는 가림
-  t = t.replace(/(https?:\/\/)?((?:[a-z0-9-]+\.)+[a-z]{2,})(\/[^\s)\]]*)/gi, function(m, sch, host, path){
-    if(!looksLikeToken(path)) return m;
-    hit('링크');
-    return (sch||'') + host + '/***';
-  });
   // 계좌·카드·회원·쿠폰·인증번호 등 — 키워드 뒤의 번호
   t = t.replace(/(계좌번호|계좌|카드번호|회원번호|고객번호|주문번호|예약번호|쿠폰번호|쿠폰코드|할인코드|프로모션코드|바우처|시리얼|일련번호|인증번호|인증코드|인증|PIN|핀번호)(\s*[:：]?\s*\[?\s*)([A-Za-z0-9][A-Za-z0-9-]{3,})/gi, function(m, kw, sep, code){
     if(!/\d/.test(code)) return m;
@@ -1161,8 +1141,10 @@ function maskPII(text) {
     hit('휴대폰'); return a + s1 + '****' + s2 + end;
   });
   // 12자리 이상 숫자 (카드·계좌 등)
-  t = t.replace(/(?:\d[-\s]?){12,19}(?!\d)/g, function(m){
+  t = t.replace(/(?:\d[-\s]?){12,19}(?!\d)/g, function(m, offset, str){
     if(!/\d{4}/.test(m)) return m;
+    // 링크 주소 안의 숫자는 제외
+    if(/\S*[\/=?&#.]$/.test(str.slice(Math.max(0, offset-1), offset)) || /[a-z0-9-]\.[a-z]{2,}\/\S*$/i.test(str.slice(Math.max(0, offset-80), offset))) return m;
     hit('카드·계좌번호'); return m.replace(/\d/g, '*');
   });
   // 이미 일부 가려진 이름 (채*수)
