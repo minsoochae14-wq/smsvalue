@@ -120,6 +120,20 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .trust-fill{height:100%;border-radius:4px}
 .dup-row{display:flex;align-items:center;gap:8px;padding:12px 14px;background:var(--fill-soft);border-radius:12px;margin-bottom:20px}
 .links-box{margin-bottom:20px}
+.se-box{margin-bottom:20px}
+.se-head{display:flex;align-items:baseline;gap:6px;margin-bottom:8px}
+.se-title{font-size:14px;font-weight:700;color:#111}
+.se-cnt{font-size:13px;font-weight:700;color:#1D9E75}
+.se-row{display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:6px;background:var(--card);border:0.5px solid rgba(0,0,0,.1);border-radius:12px;cursor:pointer}
+.se-row:active{background:var(--fill-soft)}
+.se-txt{flex:1;min-width:0}
+.se-sum{font-size:14px;font-weight:600;color:#111;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.se-meta{display:flex;align-items:center;gap:10px;margin-top:4px;font-size:12px;color:#999}
+.se-meta span{display:flex;align-items:center;gap:3px}
+.se-meta .se-got{color:#D85A30;font-weight:600}
+.se-row .ti-chevron-right{font-size:16px;color:#ccc;flex-shrink:0}
+.se-empty{padding:14px;border-radius:12px;background:var(--fill-soft);font-size:13px;line-height:1.6;color:#888}
+.sheet-body .se-box{margin:6px 0 12px}
 .save-btn{display:flex;align-items:center;justify-content:center;width:30px;height:30px;margin:-6px -6px -6px 0;border:none;background:transparent;border-radius:50%;cursor:pointer;flex-shrink:0}
 .save-btn i{font-size:19px;color:#ccc;pointer-events:none}
 .save-btn.on i{color:#EF9F27}
@@ -279,6 +293,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
     <div class="result-header"><i class="ti ti-sparkles"></i><span>AI 자동 분류 완료</span></div>
     <div class="result-body" id="resultBody"></div>
   </div>
+  <div id="sheetSameEvent" style="display:none"></div>
   <button class="submit-ok" id="submitOk" disabled>붙여넣기 후 자동 분류됩니다</button>
 </div>
 
@@ -944,8 +959,13 @@ function openDetail(id) {
     '</div>'+
     '<div class="trust-wrap"><div class="trust-row"><span style="font-size:14px;color:#999">신뢰도 점수</span><span style="font-size:14px;font-weight:700;color:'+tt+'">'+d.trust_score+'점</span></div><div class="trust-bar-bg"><div class="trust-fill" style="width:'+d.trust_score+'%;background:'+tc+'"></div></div></div>'+
     '<div class="dup-row"><i class="ti ti-users" style="font-size:16px;color:#aaa"></i><span class="dup-cnt">'+(d.submit_count||1)+'명</span><span class="dup-txt">이 동일 문자를 제출했어요</span></div>'+
+    '<div id="detailSameEvent" style="display:none"></div>'+
     linksHtml(d);
   document.getElementById('detailScreen').classList.add('open');
+  var detailId = d.id;
+  loadSameEvent(document.getElementById('detailSameEvent'), detailId, function(){
+    return currentDetail && currentDetail.id === detailId && document.getElementById('detailScreen').classList.contains('open');
+  }, false);
 }
 
 function closeDetail() {
@@ -1029,6 +1049,9 @@ function resetSheet() {
   btn.textContent = '붙여넣기 후 자동 분류됩니다';
   btn.style.background = '#1D9E75';
   aiResult = null;
+  submitDone = false;
+  sameEventSeq++;
+  hideSameEvent(document.getElementById('sheetSameEvent'));
   clearTimeout(aiTimer);
 }
 
@@ -1424,7 +1447,10 @@ function showAIResult(d) {
   btn.textContent = '이대로 제출하기';
 }
 
+var submitDone = false;
+
 function doSubmit() {
+  if(submitDone) { closeSheet(); return; }
   if(!aiResult) return;
   var sms = maskText(document.getElementById('smsTA').value.trim());
   var btn = document.getElementById('submitOk');
@@ -1493,11 +1519,74 @@ function onSubmitDone(saved) {
   }
   btn.textContent = btnText;
   btn.style.background = '#085041';
+  // 검토 대기 글은 공개 목록에서 찾을 수 없어 같은 행사 섹션을 보여주지 않고 닫음
+  if(pending || !saved || !saved.id) {
+    setTimeout(function(){
+      closeSheet();
+      showToast(toast);
+      fetchData();
+    }, 1000);
+    return;
+  }
+  var seq = sameEventSeq;
   setTimeout(function(){
-    closeSheet();
+    if(seq !== sameEventSeq) return;
     showToast(toast);
     fetchData();
+    submitDone = true;
+    btn.disabled = false;
+    btn.textContent = '닫기';
+    loadSameEvent(document.getElementById('sheetSameEvent'), saved.id, function(){ return seq === sameEventSeq; }, true);
   }, 1000);
+}
+
+// ---- 같은 행사에서 사람들이 받은 혜택 (RPC get_same_event_benefits)
+var sameEventSeq = 0;
+
+function hideSameEvent(box) {
+  if(!box) return;
+  box.style.display = 'none';
+  box.innerHTML = '';
+}
+
+// stillValid: 응답이 왔을 때 아직 같은 화면인지 확인. 실패하면 오류 없이 섹션만 숨김
+function loadSameEvent(box, id, stillValid, fromSheet) {
+  hideSameEvent(box);
+  if(!box || !db || !/^\d+$/.test(String(id))) return;
+  db.rpc('get_same_event_benefits', { p_id: Number(id) })
+    .then(function(res){
+      if(!stillValid()) return;
+      if(res.error || !Array.isArray(res.data)) { hideSameEvent(box); return; }
+      box.innerHTML = sameEventHtml(res.data);
+      box.style.display = 'block';
+      box.querySelectorAll('.se-row').forEach(function(r){
+        r.addEventListener('click', function(){
+          var rid = this.dataset.id;
+          if(!allItems.some(function(i){ return String(i.id) === rid; })) return;
+          if(fromSheet) closeSheet();
+          openDetail(rid);
+        });
+      });
+    })
+    .catch(function(){
+      if(stillValid()) hideSameEvent(box);
+    });
+}
+
+function sameEventHtml(rows) {
+  var head = '<div class="se-head"><span class="se-title">같은 행사에서 사람들이 받은 혜택</span>'+
+    (rows.length ? '<span class="se-cnt">'+rows.length+'</span>' : '')+'</div>';
+  if(!rows.length) {
+    return '<div class="se-box">'+head+'<div class="se-empty">이 행사의 첫 제보예요. 같은 행사 문자를 받은 분이 올리면 여기에 모여요.</div></div>';
+  }
+  return '<div class="se-box">'+head+rows.map(function(r){
+    var end = hasEndDate(r) ? '~'+fmtDate(r.end_date)+(isExpired(r.end_date)?' · 마감':'') : '기간 미정';
+    return '<div class="se-row" data-id="'+esc(r.id)+'"><div class="se-txt">'+
+      '<div class="se-sum">'+esc(maskText(r.summary) || maskText(r.brand))+'</div>'+
+      '<div class="se-meta"><span class="se-got"><i class="ti ti-users"></i>'+(Number(r.submit_count)||1)+'명이 받음</span>'+
+      '<span><i class="ti ti-calendar"></i>'+esc(end)+'</span></div>'+
+      '</div><i class="ti ti-chevron-right"></i></div>';
+  }).join('')+'</div>';
 }
 
 // 개인정보 마스킹 — 이름, 계좌/카드/주민번호, 쿠폰·인증번호, 휴대폰, 이메일
