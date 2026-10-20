@@ -963,7 +963,7 @@ function openDetail(id) {
     linksHtml(d);
   document.getElementById('detailScreen').classList.add('open');
   var detailId = d.id;
-  loadSameEvent(document.getElementById('detailSameEvent'), detailId, function(){
+  loadSameEvent(document.getElementById('detailSameEvent'), detailId, d.submit_count, function(){
     return currentDetail && currentDetail.id === detailId && document.getElementById('detailScreen').classList.contains('open');
   }, false);
 }
@@ -1449,13 +1449,65 @@ function showAIResult(d) {
 
 var submitDone = false;
 
+// ---- 같은 기기 재제출 방지: 공백을 정리한 문자 내용의 SHA-256만 localStorage에 보관 (원문은 저장 안 함)
+var SENT_KEY = 'smsvalue_sent_hashes';
+
+function normalizeSms(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim();
+}
+
+// 해시를 만들 수 없는 환경(저장 불가, crypto.subtle 없음)이면 null → 확인을 건너뜀
+function smsHash(text) {
+  if(!storageOk || !window.crypto || !window.crypto.subtle || !window.TextEncoder) return Promise.resolve(null);
+  try {
+    return window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(normalizeSms(text)))
+      .then(function(buf){
+        return Array.prototype.map.call(new Uint8Array(buf), function(b){ return ('0' + b.toString(16)).slice(-2); }).join('');
+      }, function(){ return null; });
+  } catch(e) {
+    return Promise.resolve(null);
+  }
+}
+
+function getSentHashes() {
+  if(!storageOk) return [];
+  try {
+    var arr = JSON.parse(window.localStorage.getItem(SENT_KEY) || '[]');
+    return Array.isArray(arr) ? arr.filter(function(h){ return /^[0-9a-f]{64}$/.test(h); }) : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+function rememberSent(hash) {
+  if(!hash || !storageOk) return;
+  var arr = getSentHashes().filter(function(h){ return h !== hash; });
+  arr.unshift(hash);
+  try { window.localStorage.setItem(SENT_KEY, JSON.stringify(arr.slice(0, 500))); } catch(e) {}
+}
+
 function doSubmit() {
   if(submitDone) { closeSheet(); return; }
   if(!aiResult) return;
-  var sms = maskText(document.getElementById('smsTA').value.trim());
+  var original = document.getElementById('smsTA').value;
   var btn = document.getElementById('submitOk');
   btn.disabled = true;
   btn.textContent = '저장 중...';
+  var seq = sameEventSeq;
+  smsHash(original).then(function(hash){
+    // 해시 계산 중에 시트를 닫았거나 문자를 고쳤으면 중단
+    if(seq !== sameEventSeq || !aiResult || document.getElementById('smsTA').value !== original) return;
+    if(hash && getSentHashes().indexOf(hash) >= 0) {
+      btn.textContent = '이미 제보한 문자예요';
+      showToast('이미 제보한 문자예요');
+      return;
+    }
+    sendSubmit(maskText(original.trim()), hash);
+  });
+}
+
+function sendSubmit(sms, hash) {
+  var btn = document.getElementById('submitOk');
   var item = {
     brand: aiResult.brand,
     category: aiResult.category,
@@ -1487,6 +1539,7 @@ function doSubmit() {
           return;
         }
         console.log('저장 성공:', res.data);
+        rememberSent(hash);
         if(res.data && res.data.id) rememberMine(res.data.id);
         onSubmitDone(res.data);
       })
@@ -1536,7 +1589,7 @@ function onSubmitDone(saved) {
     submitDone = true;
     btn.disabled = false;
     btn.textContent = '닫기';
-    loadSameEvent(document.getElementById('sheetSameEvent'), saved.id, function(){ return seq === sameEventSeq; }, true);
+    loadSameEvent(document.getElementById('sheetSameEvent'), saved.id, saved.submit_count, function(){ return seq === sameEventSeq; }, true);
   }, 1000);
 }
 
@@ -1550,14 +1603,14 @@ function hideSameEvent(box) {
 }
 
 // stillValid: 응답이 왔을 때 아직 같은 화면인지 확인. 실패하면 오류 없이 섹션만 숨김
-function loadSameEvent(box, id, stillValid, fromSheet) {
+function loadSameEvent(box, id, submitCount, stillValid, fromSheet) {
   hideSameEvent(box);
   if(!box || !db || !/^\d+$/.test(String(id))) return;
   db.rpc('get_same_event_benefits', { p_id: Number(id) })
     .then(function(res){
       if(!stillValid()) return;
       if(res.error || !Array.isArray(res.data)) { hideSameEvent(box); return; }
-      box.innerHTML = sameEventHtml(res.data);
+      box.innerHTML = sameEventHtml(res.data, submitCount);
       box.style.display = 'block';
       box.querySelectorAll('.se-row').forEach(function(r){
         r.addEventListener('click', function(){
@@ -1573,11 +1626,16 @@ function loadSameEvent(box, id, stillValid, fromSheet) {
     });
 }
 
-function sameEventHtml(rows) {
+// submitCount: 지금 보고 있는(방금 올린) 혜택의 제보 수 — 목록이 비었을 때 문구를 고르는 데 씀
+function sameEventHtml(rows, submitCount) {
   var head = '<div class="se-head"><span class="se-title">같은 행사에서 사람들이 받은 혜택</span>'+
     (rows.length ? '<span class="se-cnt">'+rows.length+'</span>' : '')+'</div>';
   if(!rows.length) {
-    return '<div class="se-box">'+head+'<div class="se-empty">이 행사의 첫 제보예요. 같은 행사 문자를 받은 분이 올리면 여기에 모여요.</div></div>';
+    var n = Number(submitCount) || 1;
+    var msg = n >= 2
+      ? '이 혜택을 '+n+'명이 제보했어요. 같은 행사의 다른 혜택은 아직 없어요.'
+      : '이 행사의 첫 제보예요. 같은 행사 문자를 받은 분이 올리면 여기에 모여요.';
+    return '<div class="se-box">'+head+'<div class="se-empty">'+msg+'</div></div>';
   }
   return '<div class="se-box">'+head+rows.map(function(r){
     var end = hasEndDate(r) ? '~'+fmtDate(r.end_date)+(isExpired(r.end_date)?' · 마감':'') : '기간 미정';
